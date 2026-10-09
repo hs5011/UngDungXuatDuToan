@@ -14,7 +14,8 @@ import streamlit.components.v1 as components
 
 from dutoan.calc import compute, kdp_max, ks_month_price, vnd, sec_name, sec_kh, SEC_NOTES
 from dutoan.catalog import GROUP_BY_CODE, PM_ROLES, TASK_BY_ID
-from dutoan.defaults import GRADES, GRADE_NOTE, LOAI_HO_SO, default_project, merge_defaults
+from dutoan import storage
+from dutoan.defaults import GRADES, GRADE_NOTE, LOAI_HO_SO
 from dutoan.excel_export import export_bytes
 
 APP_VERSION = "1.1.0"
@@ -47,25 +48,91 @@ section[data-testid="stSidebar"] .stButton button { justify-content: flex-start;
 .kpi .short { color: #374151; font-size: .9rem; margin-top: 2px; }
 .kpi .sub { color: #6b7280; font-size: .8rem; margin-top: 6px; border-top: 1px dashed #e5e7eb; padding-top: 6px; }
 section[data-testid="stSidebar"] .kpi { padding: 10px 12px; }
-.tbl { width: 100%; border-collapse: collapse; font-size: .9rem; margin-bottom: .5rem; }
-.tbl th { background: #F1F3F7; color: #374151; font-weight: 600; text-align: left; padding: 8px 10px;
+.tbl-wrap { overflow-x: auto; margin-bottom: .5rem; }
+.tbl { width: 100%; border-collapse: collapse; font-size: .875rem; }
+.tbl tr { height: 35px; }
+.tbl th { background: #F1F3F7; color: #374151; font-weight: 600; text-align: left; padding: 0 10px; height: 35px; white-space: nowrap;
           border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; }
-.tbl td { padding: 7px 10px; border-bottom: 1px solid #eef0f4; vertical-align: top; }
+.tbl td { padding: 0 10px; height: 35px; line-height: 1.2; border-bottom: 1px solid #eef0f4; vertical-align: middle;
+          white-space: nowrap; }
 .tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tbl tr.sec td { font-weight: 700; background: #F7F8FB; }
 .tbl tr.total td { font-weight: 800; background: #E8EDF8; color: #2F4A9E; border-top: 2px solid #2F4A9E; }
 .tbl tr.hot td { background: #FFF7E6; }
-.tbl td.note { color: #6b7280; font-size: .82rem; }
+.tbl td.note { color: #6b7280; }
 section[data-testid="stSidebar"] .kpi .val { font-size: 1.2rem; }
 </style>
 """, unsafe_allow_html=True)
 
 ss = st.session_state
-if "proj" not in ss:
-    ss.proj = default_project()
-    ss.ver = 0
-if "step" not in ss:
+ss.setdefault("ver", 0)
+ss.setdefault("step", 0)
+ss.setdefault("pid", None)
+ss.setdefault("proj", None)
+
+
+def _hash(p):
+    """Băm nội dung dự án (bỏ phần _meta ngày giờ) để biết có thay đổi cần lưu không."""
+    data = {k: v for k, v in (p or {}).items() if k != "_meta"}
+    return hashlib.md5(json.dumps(data, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+
+
+def open_project(pid):
+    ss.pid = pid
+    ss.proj = storage.load_project(pid) if pid else None
+    ss.saved_hash = _hash(ss.proj) if ss.proj else None
     ss.step = 0
+    ss.ver += 1
+
+
+def _ngay(iso):
+    return f"{iso[8:10]}/{iso[5:7]}/{iso[:4]}" if len(iso) >= 10 else ""
+
+
+with st.sidebar:
+    st.markdown(f"## 🧮 Dự toán PM <span style='font-size:.9rem'>v{APP_VERSION}</span>", unsafe_allow_html=True)
+    st.caption("TT 39/2026/TT-BKHCN · NĐ 224/2026")
+    projects = storage.list_projects()
+    if storage.BROKEN:
+        st.warning("Không đọc được file dự án: " + "; ".join(f"`{k}`" for k in storage.BROKEN))
+    ids = [x[0] for x in projects]
+    labels = {pid: f"{name}  ·  {_ngay(upd)}" for pid, name, upd in projects}
+    if ss.pid and ss.pid not in ids:  # dự án vừa bị xoá ở nơi khác
+        open_project(None)
+    sel = st.selectbox("Dự án", ids, index=ids.index(ss.pid) if ss.pid in ids else None,
+                       placeholder="— Chọn dự án —", format_func=lambda i: labels.get(i, i), key=f"pick{ss.ver}")
+    if sel != ss.pid:
+        open_project(sel)
+        st.rerun()
+    with st.expander("➕ Tạo dự án mới", expanded=not ids):
+        with st.form("new_project_form", clear_on_submit=True, border=False):
+            new_name = st.text_input("Tên dự án")
+            if st.form_submit_button("Tạo dự án", type="primary"):
+                if new_name.strip():
+                    open_project(storage.create_project(new_name.strip()))
+                    st.rerun()
+                else:
+                    st.warning("Nhập tên dự án.")
+        up = st.file_uploader("Hoặc nhập từ file dự án (.json) đã tải về máy", type="json",
+                              help="File tải về ở bước 9b – sẽ được thêm thành một dự án trong danh sách")
+        if up is not None and ss.get("loaded_sig") != (up.name, up.size):
+            ss.loaded_sig = (up.name, up.size)
+            try:
+                open_project(storage.create_project(None, json.load(up)))
+                st.rerun()
+            except (ValueError, KeyError, TypeError) as e:
+                st.error(f"File không đúng định dạng dự án: {e}")
+
+if ss.proj is None:
+    st.title("🧮 Dự toán phần mềm theo TT 39/2026/TT-BKHCN")
+    st.info("**Tạo** hoặc **chọn** một dự án ở thanh bên trái để bắt đầu.")
+    st.markdown(
+        "**Quy trình 9 bước:** Nhập thông tin → Thiết bị & dịch vụ → Chi tiết công việc → Phần mềm nội bộ → "
+        "QLDA tự thực hiện → Tổng hợp chi phí → Phân bổ vốn → Cấu hình nâng cao → Xuất Excel & lưu.  \n"
+        "Dự án được **tự động lưu** trên máy (thư mục `workspace/projects`) sau mỗi thay đổi; lần sau chỉ cần chọn lại "
+        "trong ô **Dự án**.")
+    st.stop()
+
 proj = ss.proj
 ts = proj["tham_so"]
 
@@ -182,15 +249,54 @@ def tri(label, path, auto_text):
     _set(path, {"AUTO": None, "CO": True, "KHONG": False}[v])
 
 
-ROW_H = 66  # px; > 64px thì ô chữ trong bảng sửa được tự xuống dòng (giới hạn của Streamlit)
+# Chuẩn bảng của hệ thống: mọi bảng dòng cao 35 px (ROW_STD), cột rộng vừa nội dung (editor()), bảng chỉ xem dùng HTML.
 
 
 ROW_STD = 35  # px – chiều cao dòng chuẩn của bảng Streamlit
 
 
-def ed_height(n, dynamic=False, row=ROW_H):
+MIN_W = {"small": 64, "medium": 150, "large": 240}  # độ rộng tối thiểu (px) khi cột khai báo small/medium/large
+CHAR_PX = 7.4  # độ rộng trung bình 1 ký tự (font 14px)
+
+
+def _cell_text(v):
+    v = clean(v)
+    if v is None:
+        return ""
+    if isinstance(v, bool):
+        return "xx"
+    if isinstance(v, float) and v.is_integer() or isinstance(v, int):
+        return f"{v:,.0f}"
+    if isinstance(v, float):
+        return f"{v:,.2f}"
+    return str(v)
+
+
+def editor(data, column_config=None, width=None, max_w=380, **kw):
+    """st.data_editor với độ rộng từng cột vừa đủ nội dung dài nhất (không kéo giãn cả bảng)."""
+    cfg = {}
+    given = dict(column_config or {})
+    for col in data.columns:
+        c = dict(given.get(col) or {})
+        if isinstance(c.get("width"), int):
+            cfg[col] = c
+            continue
+        texts = [_cell_text(v) for v in data[col].tolist()]
+        opts = (c.get("type_config") or {}).get("options") or []
+        label = c.get("label") or str(col)
+        n = max([len(label) + 3] + [len(t) for t in texts] + [len(str(o)) + 3 for o in opts])
+        px = int(n * CHAR_PX + 28)
+        px = max(px, MIN_W.get(c.get("width"), 56))
+        c["width"] = min(px, max_w)
+        cfg[col] = c
+    for col, c in given.items():
+        cfg.setdefault(col, c)
+    return st.data_editor(data, column_config=cfg, width="content", **kw)
+
+
+def ed_height(n, dynamic=False, row=None):
     """Chiều cao khung bảng sửa được để thấy hết các dòng, không phải cuộn."""
-    return 40 + row * (n + (1 if dynamic else 0))
+    return 40 + (row or ROW_STD) * (n + (1 if dynamic else 0))
 
 
 def df_hash(df):
@@ -218,12 +324,14 @@ def list_editor(key, cols, labels, money_cols=(), pct_cols=()):
         return pd.DataFrame(rows, columns=cols)
 
     base, ed_key = snapshot(key, build)
-    cfg = {c: st.column_config.Column(labels[i]) for i, c in enumerate(cols)}
+    cfg = {c: st.column_config.Column(labels[i], width="large" if c in ("ten", "vi_tri") else
+                                      ("medium" if c in ("phuong_phap", "nguon", "ghi_chu") else None))
+           for i, c in enumerate(cols)}
     for c in money_cols:
         cfg[c] = st.column_config.NumberColumn(labels[cols.index(c)], min_value=0, step=1000, format="%.0f")
     for c in pct_cols:
         cfg[c] = st.column_config.NumberColumn(labels[cols.index(c)] + " (%)", min_value=0, max_value=100, step=1)
-    df = st.data_editor(base, height=ed_height(len(base), True, ROW_STD), num_rows="dynamic", key=ed_key,
+    df = editor(base, height=ed_height(len(base), True, ROW_STD), num_rows="dynamic", key=ed_key,
                         column_config=cfg, width="stretch")
     out = []
     for rec in df.to_dict("records"):
@@ -331,7 +439,7 @@ res = compute(proj)
 
 
 def proj_hash():
-    return hashlib.md5(json.dumps(proj, sort_keys=True, ensure_ascii=False, default=str).encode()).hexdigest()
+    return _hash(proj)
 
 
 computed_hash = proj_hash()
@@ -352,25 +460,6 @@ def step_done(i):
 
 # ================================================================== thanh bên
 with st.sidebar:
-    st.markdown(f"## 🧮 Dự toán PM <span style='font-size:.9rem'>v{APP_VERSION}</span>", unsafe_allow_html=True)
-    st.caption("TT 39/2026/TT-BKHCN · NĐ 224/2026")
-    st.text_input("Dự án", value=proj["thong_tin"]["ten_du_an"] or "(chưa đặt tên)", disabled=True)
-    with st.expander("📂 Mở / tạo dự án"):
-        up = st.file_uploader("Mở dự án (.json)", type="json")
-        if up is not None:
-            sig = (up.name, up.size)
-            if ss.get("loaded_sig") != sig:
-                ss.loaded_sig = sig
-                ss.proj = merge_defaults(json.load(up))
-                reset_widgets()
-                st.rerun()
-        if st.button("➕ Tạo dự án mới (mặc định)", width="stretch"):
-            ss.proj = default_project()
-            ss.loaded_sig = None
-            ss.step = 0
-            reset_widgets()
-            st.rerun()
-
     # Gộp thành một khối để không bị Streamlit chèn khoảng trống giữa các phần tử
     card = kpi_cards([{"label": "Tổng mức đầu tư", "value": res.tmdt, "main": True,
                        "sub": f"Gms {vnd(res.gms)} đ<br>Dự phòng {vnd(res.totals['V'])} đ "
@@ -384,6 +473,26 @@ with st.sidebar:
                      type="primary" if i == ss.step else "secondary"):
             ss.step = i
             st.rerun()
+    st.markdown("<div class='sb-hr'></div>", unsafe_allow_html=True)
+    confirm = ss.get("del_confirm") == ss.pid
+    with st.expander("⚠️ Xoá dự án", expanded=confirm):
+        st.caption(f"Xoá vĩnh viễn dự án **{proj['thong_tin']['ten_du_an'] or ss.pid}** khỏi máy. "
+                   "Nên tải file .json sao lưu (bước 9) trước khi xoá.")
+        if not confirm:
+            if st.button("Xoá dự án này", width="stretch"):
+                ss.del_confirm = ss.pid
+                st.rerun()
+        else:
+            st.warning("Bấm **Xác nhận xoá** để xoá vĩnh viễn, không khôi phục được.")
+            a_, b_ = st.columns(2)
+            if a_.button("Xác nhận xoá", type="primary", width="stretch"):
+                storage.delete_project(ss.pid)
+                ss.del_confirm = None
+                open_project(None)
+                st.rerun()
+            if b_.button("Huỷ", width="stretch"):
+                ss.del_confirm = None
+                st.rerun()
 
 
 # ================================================================== BƯỚC 1
@@ -554,7 +663,7 @@ def step_cong_viec():
             "Xoá": st.column_config.CheckboxColumn(help="Loại việc khỏi dự toán; việc mặc định bỏ tick để khôi phục"),
             "Ghi đè": st.column_config.TextColumn(width="small"),
         }
-        ed = st.data_editor(base, height=ed_height(len(base), True, ROW_STD),
+        ed = editor(base, height=ed_height(len(base), True, ROW_STD),
                             key=f"grp{ss.ver}_{pick}_{ss[nonce_key]}_{df_hash(base)}", hide_index=True,
                             width="stretch", num_rows="dynamic", column_config=cfg,
                             disabled=["Mã", "Tự động", "Đơn giá ngày", "Thành tiền", "Theo văn bản (sau thuế)", "Ghi đè"])
@@ -740,7 +849,7 @@ def step_pm():
             return pd.DataFrame({"Vai trò": [n for n, _ in PM_ROLES], "Tỷ lệ %": [r * 100 for r in ratios],
                                  "Bậc KS": [str(b) for b in ts["pm_bac"]]})
         base, ed_key = snapshot("pmroles", build)
-        ed = st.data_editor(base, key=ed_key, hide_index=True, disabled=["Vai trò"], width="stretch",
+        ed = editor(base, key=ed_key, hide_index=True, disabled=["Vai trò"], width="stretch",
                             column_config={"Bậc KS": st.column_config.SelectboxColumn(options=["TB"] + [str(i) for i in range(1, 9)])})
         ts["pm_ty_le"] = [float(x or 0) / 100 for x in ed["Tỷ lệ %"]]
         ts["pm_bac"] = [b if b == "TB" else int(b) for b in ed["Bậc KS"]]
@@ -779,7 +888,8 @@ def html_table(headers, rows, num_cols=()):
         tds = "".join(f"<td class='{'num' if i in num_cols else ('note' if headers[i] == 'Ghi chú' else '')}'>{esc(c)}</td>"
                       for i, c in enumerate(cells))
         body.append(f"<tr class='{cls}'>{tds}</tr>")
-    st.markdown(f"<table class='tbl'><thead><tr>{th}</tr></thead><tbody>{''.join(body)}</tbody></table>",
+    st.markdown(f"<div class='tbl-wrap'><table class='tbl'><thead><tr>{th}</tr></thead>"
+                f"<tbody>{''.join(body)}</tbody></table></div>",
                 unsafe_allow_html=True)
 
 
@@ -838,7 +948,7 @@ def step_tong_hop():
 
     with st.expander("✏️ Sửa cột Ghi chú (lưu vào dự án và xuất ra Excel)"):
         base = pd.DataFrame([{"Dòng": r["Dòng"], "Ghi chú": r["Ghi chú"]} for r in note_rows])
-        ed = st.data_editor(base, row_height=ROW_H, height=ed_height(len(base)), key=f"gc{ss.ver}_{df_hash(base)}",
+        ed = editor(base, height=ed_height(len(base)), max_w=620, key=f"gc{ss.ver}_{df_hash(base)}",
                             hide_index=True, width="stretch",
                             disabled=["Dòng"], column_config={"Ghi chú": st.column_config.TextColumn(width="large")})
         changed = False
@@ -867,11 +977,11 @@ def step_tong_hop():
             "C = tv2 thẩm tra, D = tv3 giám sát, **E = tv4 lập E-HSMT & đánh giá E-HSDT**, **F = tv5 thẩm định**), "
             "số = thứ tự việc trong nhóm. Tick **Dùng VB** để lấy số văn bản thay cho số chuyên gia.")
         base = pd.DataFrame([{
-            "Mã việc": c["ma"], "Nhóm chi phí": f"{c['nhom']}. {c['nhom_ten']}", "Công việc": c["cong_viec"],
+            "Mã việc": c["ma"], "Nhóm chi phí": f"{c['nhom']}. " + (lambda t: t[:1].upper() + t[1:])(c["nhom_ten"].replace("Chi phí ", "", 1)), "Công việc": c["cong_viec"],
             "Theo chuyên gia (đ)": vnd(c["chuyen_gia"]), "Theo văn bản (đ)": vnd(c["van_ban"]),
             "Chênh lệch": f"{c['lech']:+.0%}", "Dùng VB": c["dang_dung"] == "Văn bản",
             "Căn cứ văn bản": c["can_cu"]} for c in res.compare])
-        ed = st.data_editor(base, row_height=ROW_H, height=ed_height(len(base)), key=f"cmp{ss.ver}_{df_hash(base)}",
+        ed = editor(base, height=ed_height(len(base)), max_w=720, key=f"cmp{ss.ver}_{df_hash(base)}",
                             hide_index=True, width="stretch",
                             disabled=[c for c in base.columns if c != "Dùng VB"],
                             column_config={"Mã việc": st.column_config.TextColumn(width="small"),
@@ -904,26 +1014,53 @@ def step_phan_bo():
         "quyết toán năm cuối." if ts["che_do"] == "THUE" else "chuẩn bị đầu tư vào năm đầu, phần còn lại năm cuối (như template)."))
     pb = res.phan_bo
     n = pb["n"]
+    labels = pb["labels"]
+    secs = [s for s in ("I", "II", "III", "IV", "V") if any(r["nhom"] == s for r in pb["rows"])]
+
+    # ---------------- 7a. Tỷ lệ – có dòng nhóm I, II, … (dòng nhóm không sửa được)
     st.subheader("7a. Tỷ lệ phân bổ (%)")
     with st.container(border=True):
-        base = pd.DataFrame([{"Mã": r["key"], "Nội dung": r["noi_dung"],
-                              **{pb["labels"][i]: round(r["ty_le"][i] * 100, 4) for i in range(n)}} for r in pb["rows"]])
-        ed = st.data_editor(base, row_height=ROW_H, height=ed_height(len(base)), key=f"pb{ss.ver}_{df_hash(base)}",
-                            hide_index=True, disabled=["Mã", "Nội dung"], width="stretch",
-                            column_config={l: st.column_config.NumberColumn(l + " (%)", min_value=0, max_value=100) for l in pb["labels"]})
+        st.caption("Nhập % từng năm cho mỗi khoản mục (tổng một dòng = 100%). Dòng in hoa là nhóm chi phí, chỉ để xem.")
+        recs, meta = [], []
+        for sec in secs:
+            recs.append({"STT": sec, "Nội dung": sec_name(sec, ts), **{l: None for l in labels}})
+            meta.append(None)
+            for k, r in enumerate([x for x in pb["rows"] if x["nhom"] == sec], start=1):
+                recs.append({"STT": str(k), "Nội dung": "    " + r["noi_dung"],
+                             **{labels[i]: round(r["ty_le"][i] * 100, 4) for i in range(n)}})
+                meta.append(r["key"])
+        base = pd.DataFrame(recs)
+        ss.setdefault("pb_nonce", 0)
+        ed = editor(base, height=ed_height(len(base), row=ROW_STD), max_w=620,
+                    key=f"pb{ss.ver}_{ss.pb_nonce}_{df_hash(base)}", hide_index=True, disabled=["STT", "Nội dung"],
+                    placeholder="",
+                    column_config={l: st.column_config.NumberColumn(l + " (%)", min_value=0, max_value=100) for l in labels})
         if not ed.equals(base):
-            for _, row in ed.iterrows():
-                proj["phan_bo"][row["Mã"]] = [float(row[l] or 0) / 100 for l in pb["labels"]]
+            for (_, row), key in zip(ed.iterrows(), meta):
+                if key is not None:
+                    proj["phan_bo"][key] = [float(clean(row[l]) or 0) / 100 for l in labels]
+            ss.pb_nonce += 1  # sửa vào dòng nhóm sẽ bị bỏ qua và bảng được làm mới
             st.rerun()
         if st.button("↺ Khôi phục phân bổ mặc định"):
             proj["phan_bo"] = {}
             st.rerun()
+
+    # ---------------- 7b. Số tiền theo năm – có dòng nhóm in đậm như bảng 6a
     st.subheader("7b. Số tiền theo năm")
-    rows = [{"Nội dung": r["noi_dung"], "Giá trị": r["tong"], **{pb["labels"][i]: r["nam"][i] for i in range(n)},
-             "Còn lại": r["tong"] - sum(r["nam"])} for r in pb["rows"]]
-    rows.append({"Nội dung": "TỔNG CỘNG", "Giá trị": res.tmdt, **{pb["labels"][i]: pb["years"][i] for i in range(n)},
-                 "Còn lại": res.tmdt - sum(pb["years"])})
-    show_table(rows, money_cols=["Giá trị", "Còn lại"] + pb["labels"], bold_rows=(len(rows) - 1,))
+    rows = []
+    for sec in secs:
+        items = [x for x in pb["rows"] if x["nhom"] == sec]
+        tong = sum(x["tong"] for x in items)
+        nam = [sum(x["nam"][i] for x in items) for i in range(n)]
+        rows.append(([sec, sec_name(sec, ts), vnd(tong), *[vnd(v) for v in nam], vnd(tong - sum(nam))], "sec"))
+        for k, x in enumerate(items, start=1):
+            rows.append(([k, x["noi_dung"], vnd(x["tong"]), *[vnd(v) for v in x["nam"]],
+                          vnd(x["tong"] - sum(x["nam"]))], ""))
+    rows.append((["*", "TỔNG CỘNG", vnd(res.tmdt), *[vnd(v) for v in pb["years"]],
+                  vnd(res.tmdt - sum(pb["years"]))], "total"))
+    html_table(["STT", "Nội dung chi phí", "Giá trị sau thuế", *labels, "Còn lại"], rows,
+               num_cols=tuple(range(2, 3 + n + 1)))
+    st.caption("Cột *Còn lại* = giá trị − tổng các năm; khác 0 nghĩa là tỷ lệ của dòng đó chưa đủ 100%.")
 
 
 # ================================================================== BƯỚC 8
@@ -1012,12 +1149,12 @@ def step_cau_hinh():
         with a:
             st.markdown("**NĐ 193/2026 Điều 20** – TMĐT (tỷ), % thẩm tra QT, % kiểm toán")
             base, ed_key = snapshot("kt", lambda: pd.DataFrame(ts["bang_kiem_toan"], columns=["TMĐT (tỷ)", "% thẩm tra", "% kiểm toán"]))
-            ed = st.data_editor(base, key=ed_key, num_rows="dynamic", hide_index=True, width="stretch")
+            ed = editor(base, key=ed_key, num_rows="dynamic", hide_index=True, width="stretch")
             ts["bang_kiem_toan"] = sorted([[float(x) for x in r] for r in ed.dropna().values.tolist()])
         with b:
             st.markdown("**TT 28/2023/TT-BTC** – TMĐT (tỷ), tỷ lệ % phí thẩm định")
             base, ed_key = snapshot("ptd", lambda: pd.DataFrame(ts["bang_phi_tham_dinh"], columns=["TMĐT (tỷ)", "Tỷ lệ %"]))
-            ed = st.data_editor(base, key=ed_key, num_rows="dynamic", hide_index=True, width="stretch")
+            ed = editor(base, key=ed_key, num_rows="dynamic", hide_index=True, width="stretch")
             ts["bang_phi_tham_dinh"] = sorted([[float(x) for x in r] for r in ed.dropna().values.tolist()])
 
 
@@ -1039,12 +1176,20 @@ def step_xuat():
             st.caption("Gồm: 01_THAM_SO, BẢNG TMĐT, phân bổ vốn, các sheet Cp_* tư vấn, đào tạo, triển khai, QTVH, "
                        "kiểm thử TT 41, PM nội bộ, đơn giá, bảng NĐ 193/TT 28. Ô nền vàng là ô nhập.")
     with c2:
-        st.subheader("9b. Lưu dự án")
+        st.subheader("9b. Sao lưu dự án về máy tính")
         with st.container(border=True):
-            st.download_button("💾 Tải file dự án (.json)",
+            st.markdown(
+                "Dự án **đã được tự động lưu** trong ứng dụng (thư mục `workspace/projects`) và chọn lại được ở ô "
+                "**Dự án** trên thanh bên trái. Muốn **sao lưu riêng** hoặc **chuyển sang máy khác**, bấm nút dưới đây để "
+                "**tải file dự án (.json) về máy tính** – file chứa toàn bộ thông tin, tham số, thiết bị, công việc đã sửa, "
+                "ghi chú, phân bổ vốn.")
+            st.download_button(f"💾 Tải file dự án về máy ({name}.json)",
                                json.dumps(proj, ensure_ascii=False, indent=1).encode("utf-8"),
-                               file_name=f"{name}.json", mime="application/json", width="stretch")
-            st.caption("Mở lại bằng mục **📂 Mở / tạo dự án** ở thanh bên trái.")
+                               file_name=f"{name}.json", mime="application/json", type="primary", width="stretch")
+            st.markdown(
+                "**Cách mở lại file .json:** thanh bên trái → **➕ Tạo dự án mới** → ô **Hoặc nhập từ file dự án (.json)** → "
+                "**Browse files** (hoặc kéo thả) → chọn file. Dự án được thêm vào danh sách và mở ra ngay.")
+            st.caption("File tải về nằm ở thư mục tải về mặc định của trình duyệt (thường là Downloads).")
 
 
 PAGES = [step_thong_tin, step_thiet_bi, step_cong_viec, step_pm, step_qlda, step_tong_hop, step_phan_bo,
@@ -1053,6 +1198,11 @@ with st.sidebar:  # khung script ẩn đặt cuối thanh bên để không tạ
     components.html(FMT_SCRIPT, height=0)
 PAGES[ss.step]()
 nav_buttons()
+
+# Tự động lưu dự án khi có thay đổi
+if ss.pid and _hash(proj) != ss.get("saved_hash"):
+    storage.save_project(ss.pid, proj)
+    ss.saved_hash = _hash(proj)
 
 # Tham số vừa sửa ở bước đang mở → tính lại ngay để số liệu (thanh bên, bảng) không bị trễ một lượt.
 if proj_hash() != computed_hash:

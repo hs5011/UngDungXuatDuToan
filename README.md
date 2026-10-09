@@ -17,6 +17,10 @@ Hoặc bấm đúp `chay_ung_dung.bat`. Trình duyệt mở `http://localhost:85
 
 ## Cách dùng
 
+**Dự án:** ở thanh bên trái, ô **Dự án** chọn dự án đã có (tên · ngày cập nhật); **➕ Tạo dự án mới** để tạo theo tên
+hoặc nhập từ file `.json`; **⚠️ Xoá dự án** ở cuối thanh bên. Dự án được **tự động lưu** sau mỗi thay đổi vào
+`workspace/projects/<mã>.json` (thư mục này không đưa lên git).
+
 Menu **Các bước thực hiện** ở thanh bên trái (bước đang mở tô xanh, ✅ = đã có dữ liệu); cuối mỗi trang có nút
 ← bước trước / bước sau →. Thanh bên luôn hiện TMĐT, Gms, dự phòng và số cảnh báo.
 
@@ -29,7 +33,7 @@ Menu **Các bước thực hiện** ở thanh bên trái (bước đang mở tô
 6. **Tổng hợp chi phí**: thẻ số liệu chính, cảnh báo, bảng TMĐT, so sánh với văn bản.
 7. **Phân bổ vốn**: tỷ lệ % theo năm và số tiền từng năm.
 8. **Cấu hình nâng cao**: lương, Bảng 3.2, mô hình co giãn, đơn giá kỹ sư, bảng NĐ 193/TT 28, NĐ 214...
-9. **Xuất Excel & lưu**: tải file Excel, tải file dự án .json. Mở lại / tạo dự án mới ở mục **📂 Mở / tạo dự án** (thanh bên).
+9. **Xuất Excel & lưu**: tải file Excel; tải file dự án .json để sao lưu/chuyển máy (nhập lại ở **➕ Tạo dự án mới**).
 
 ## File Excel xuất ra
 
@@ -69,6 +73,7 @@ kết quả trên web đến từng đồng.
 - `dutoan/defaults.py` – tham số mặc định của dự án.
 - `dutoan/scaling.py` – mô hình co giãn (nội suy log-log, hệ số 0,6, bậc thang số chuyên gia).
 - `dutoan/calc.py` – tính toàn bộ chi phí, giải Gms khi nhập TMĐT, phân bổ vốn.
+- `dutoan/storage.py` – lưu/đọc/xoá dự án trong `workspace/projects`.
 - `dutoan/excel_export.py` – xuất Excel có công thức (viết lại y hệt công thức trong `calc.py`).
 - `app.py` – giao diện Streamlit (menu các bước ở thanh bên trái).
 - `.streamlit/config.toml` – màu giao diện.

@@ -5,6 +5,113 @@
 
 ---
 
+## 2026-10-09 – Lượt 19: Chọn dự án như App_TestHieuNang (tự lưu, chọn lại, tạo, xoá)
+**Yêu cầu:** Bổ sung chỗ "Dự án" cho phép chọn dự án như thiết kế ở App_TestHieuNang (PerfTool).
+
+**Đã làm**
+- `dutoan/storage.py` (mới): lưu mỗi dự án thành `workspace/projects/<thời gian>-<tên-không-dấu>.json` (ghi nguyên tử),
+  liệt kê (mới nhất trước, báo file hỏng), tạo mới (rỗng hoặc từ file .json nhập vào), đọc, xoá.
+- `app.py`
+  - Thanh bên: ô chọn **Dự án** ("— Chọn dự án —", mỗi dòng "tên · dd/mm/yyyy"); mục **➕ Tạo dự án mới** (nhập tên →
+    Tạo dự án; hoặc nhập từ file .json); mục **⚠️ Xoá dự án** ở cuối (bấm "Xoá dự án này" → "Xác nhận xoá"/"Huỷ").
+  - Chưa chọn dự án: trang chào hướng dẫn quy trình 9 bước.
+  - **Tự động lưu** dự án đang mở sau mỗi thay đổi; chọn lại dự án là nạp đúng dữ liệu đã lưu.
+  - Bỏ ô "Dự án" chỉ đọc và mục "📂 Mở / tạo dự án" cũ; 9b đổi thành "Sao lưu dự án về máy tính" và hướng dẫn nhập lại.
+- `.gitignore`: bỏ qua `workspace/` (dữ liệu dự án cá nhân, không đưa lên GitHub công khai).
+- `tests/test_storage.py` (mới): 3 kiểm thử tạo/lưu/mở/xoá, nhập từ .json, file hỏng.
+- `README.md`: thêm hướng dẫn chọn/tạo/xoá dự án.
+
+**Kiểm tra**
+- `python -m pytest`: 25/25 đạt.
+- Trình duyệt: tạo "Thử nghiệm A" → sửa Gms 6 tỷ → file tự lưu (Gms 6 tỷ) → tải lại trang, chọn lại dự án → Gms 6 tỷ;
+  xoá dự án (2 bước) → file bị xoá, về trang chào. Bước 9 không lỗi.
+
+**Git:** đã duyệt – đẩy lên GitHub cùng lượt 14–18.
+
+---
+
+## 2026-10-09 – Lượt 18: Ghi rõ cách lưu và mở lại dự án (.json)
+**Yêu cầu:** Mục 9b "Lưu dự án" chưa rõ – phải ghi rõ là tải file json về máy tính để lưu trữ và mở lại bằng mục nào.
+
+**Đã sửa** – `app.py`
+- 9b đổi tên "Lưu dự án về máy tính"; thêm giải thích: ứng dụng không tự lưu, đóng/tải lại trang là mất dữ liệu; file
+  .json chứa toàn bộ thông tin, tham số, thiết bị, công việc đã sửa, ghi chú, phân bổ vốn.
+- Nút đổi thành "💾 Tải file dự án về máy (<tên>.json)", nổi bật (màu chính).
+- Hướng dẫn mở lại từng bước: thanh bên trái → 📂 Mở / tạo dự án → Browse files (hoặc kéo thả) → chọn file .json;
+  ghi chú file nằm ở thư mục tải về của trình duyệt (thường là Downloads).
+- Thanh bên: ô mở file đổi nhãn "Mở file dự án (.json) đã lưu trên máy", có chú thích trỏ về bước 9b.
+
+**Kiểm tra:** trình duyệt – bước 9 hiển thị đủ hướng dẫn, không lỗi.
+
+**Git:** đã đẩy lên GitHub (cùng lượt 19).
+
+---
+
+## 2026-10-09 – Lượt 17: Đồng nhất chuẩn bảng toàn hệ thống
+**Yêu cầu:** Bảng 6b dòng vẫn quá cao; xem và đồng nhất tất cả bảng trong hệ thống theo chuẩn đã nói.
+
+**Chuẩn áp dụng (đã ghi vào `CLAUDE.md`):** mọi dòng cao 35 px, chữ không xuống dòng (bảng rộng thì cuộn ngang);
+cột rộng vừa nội dung; số tiền dấu chấm căn phải; dòng nhóm I–V và TỔNG CỘNG in đậm; bảng khoản mục chia nhóm I–V.
+
+**Đã sửa** – `app.py`
+- Bỏ hẳn dòng cao 66 px (`ROW_H`): 6a (sửa ghi chú) và 6b dùng dòng 35 px như mọi bảng; cột chữ cho rộng tới
+  620/720 px để hiện đủ nội dung trên một dòng.
+- Bảng HTML (`.tbl`: 3b, 4a, 6a, 7b, 8c) từ 38 px (có dòng 61 px do xuống dòng) về đúng 35 px, không xuống dòng, có khung
+  cuộn ngang khi rộng.
+- 6b: cột "Nhóm chi phí" rút gọn (bỏ chữ "Chi phí" đầu), ví dụ "E. Lập E-HSMT, đánh giá E-HSDT (tv4)".
+- `ed_height()` mặc định dùng dòng chuẩn 35 px.
+- `CLAUDE.md`: thêm mục "Chuẩn bảng" và "Chuẩn nhập liệu" để các lần sửa sau tuân theo.
+
+**Kiểm tra:** đo trên trình duyệt – mọi bảng HTML ở bước 3, 4, 6, 7, 8 cao đúng 35 px/dòng; 9 bước không lỗi;
+`python -m pytest` 22/22 đạt.
+
+**Git:** đã đẩy lên GitHub (cùng lượt 19).
+
+---
+
+## 2026-10-09 – Lượt 16: Bảng 7a, 7b chia theo nhóm I–V
+**Yêu cầu:** Bảng 7a, 7b phải có các mục I, II, III… để biết khoản chi phí thuộc nhóm nào.
+
+**Đã sửa** – `app.py` (`step_phan_bo` viết lại)
+- 7a: thêm dòng nhóm (I CHI PHÍ TRANG THIẾT BỊ, II QLDA, III TƯ VẤN, IV KHÁC, V DỰ PHÒNG) trước các khoản của nhóm; cột STT
+  thay cho cột mã nội bộ (pm, thiet_bi…); dòng nhóm để trống %, sửa vào sẽ bị bỏ qua; nội dung khoản mục thụt lề.
+- 7b: chuyển sang bảng HTML giống 6a – dòng nhóm in đậm nền xám kèm tổng của nhóm theo từng năm, dòng TỔNG CỘNG in đậm
+  nền xanh, cột số căn phải; thêm chú thích cột "Còn lại".
+
+**Kiểm tra:** trình duyệt – 7a, 7b hiện đủ nhóm I–V, số nhóm khớp tổng các khoản; không lỗi.
+
+**Git:** đã đẩy lên GitHub (cùng lượt 19).
+
+---
+
+## 2026-10-09 – Lượt 15: Bảng 7a dòng cao chuẩn
+**Yêu cầu:** Bảng 7a (tỷ lệ phân bổ) có dòng quá cao, không đồng nhất với các bảng khác.
+
+**Đã sửa** – `app.py`: bảng 7a bỏ dòng cao 66 px, dùng dòng chuẩn 35 px; cột "Nội dung" cho phép rộng tới 620 px nên tên
+khoản mục dài vẫn hiện đủ trên một dòng (không cần xuống dòng).
+
+**Kiểm tra:** trình duyệt – 7a dòng thấp như các bảng khác, đủ 18 khoản mục, không lỗi.
+
+**Git:** đã đẩy lên GitHub (cùng lượt 19).
+
+---
+
+## 2026-10-09 – Lượt 14: Độ rộng cột bảng vừa đủ nội dung
+**Yêu cầu:** Rút ngắn chiều rộng các cột trong bảng cho vừa đủ (ví dụ cột "Công việc" ở 3a thừa nhiều khoảng trắng).
+
+**Đã sửa** – `app.py`
+- Hàm mới `editor()` thay cho mọi `st.data_editor`: tự tính độ rộng từng cột theo chữ dài nhất (tiêu đề, nội dung, lựa
+  chọn của ô chọn), ~7,4 px/ký tự, tối đa 380 px; bảng co theo tổng độ rộng cột (`width="content"`) thay vì kéo giãn.
+- Cột khai báo small/medium/large được hiểu là độ rộng tối thiểu 64/150/240 px (để bảng còn trống vẫn đủ chỗ gõ).
+- Bảng nhập liệu bước 2, 5: cột tên khoản mục/vị trí rộng tối thiểu 240 px; phương pháp, nguồn giá, ghi chú 150 px.
+- Áp dụng cho 8 bảng: bước 2, 3a, 4b, 5, 6a (sửa ghi chú), 6b, 7a, 8 (bảng NĐ 193, TT 28).
+
+**Kiểm tra:** trình duyệt – 3a cột "Công việc" vừa khít dòng dài nhất; bước 2–8 không lỗi. Không đổi lõi tính toán.
+
+**Git:** đã đẩy lên GitHub (cùng lượt 19).
+
+---
+
 ## 2026-10-09 – Lượt 13: Đưa mã nguồn lên GitHub
 **Yêu cầu:** Đẩy code lên `https://github.com/hs5011/UngDungXuatDuToan.git`; từ nay đẩy sau mỗi lần người dùng duyệt.
 
