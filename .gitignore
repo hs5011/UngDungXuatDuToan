@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Tài liệu nội bộ – không đẩy lên repo công khai (người dùng chưa cho phép)
+*.xlsx
+YEU-CAU-FINAL-pm-du-toan-tt39.md
+yeu-cau-pm-du-toan-tt39.md
+
+# File dự án người dùng lưu ra
+*.json
+!.claude/launch.json
+
+# Hệ điều hành / editor
+.DS_Store
+Thumbs.db
+~$*
