@@ -617,6 +617,7 @@ def solve_gms(proj):
 YEAR1_THUE = {"tv1", "tv2", "tv4", "tv5", "phi_tham_dinh", "tham_dinh_gia", "thiet_bi", "pm_tm", "tb_khac",
               "dao_tao", "trien_khai", "kiem_thu"}
 YEAR1_XD = {"tv1", "tv2", "tv4", "tv5", "phi_tham_dinh", "tham_dinh_gia"}
+EVEN_XD = {"pm"}  # chế độ XD: phần mềm nội bộ chia đều cho các năm phân bổ
 LAST = {"tham_tra", "kiem_toan"}
 
 
@@ -634,6 +635,8 @@ def default_alloc(key, n, che_do):
             return first
         if key in LAST:
             return last
+        return [1.0 / n] * n
+    if key in EVEN_XD:
         return [1.0 / n] * n
     return first if key in YEAR1_XD else last
 

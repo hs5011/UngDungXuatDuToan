@@ -165,3 +165,34 @@ def test_so_sanh_van_ban_co_cau_truc(proj):
     ma = {c["ma"] for c in r.compare}
     assert {"E2", "E3", "F2", "F3"} <= ma
     assert all(c["dang_dung"] == "Chuyên gia" for c in r.compare)
+
+
+def test_phan_bo_xd_chia_deu_pm_noi_bo(proj):
+    proj["tham_so"]["so_nam_phan_bo"] = 4
+    pb = compute(proj).phan_bo
+    pm = next(r for r in pb["rows"] if r["key"] == "pm")
+    assert pm["ty_le"] == [0.25] * 4
+    assert abs(sum(pm["nam"]) - pm["tong"]) < 1e-6
+    tv1 = next(r for r in pb["rows"] if r["key"] == "tv1")
+    assert tv1["ty_le"] == [1.0, 0.0, 0.0, 0.0]
+
+
+def test_xuat_excel_co_gia_tri_tinh_san_va_du_noi_dung(proj):
+    proj["gk_khac"] = [{"ten": "Chi phí X", "gia_tri": 10_000_000}]
+    proj["ghi_chu"] = {"tong": "Ghi chú dòng tổng"}
+    res = compute(proj)
+    data = export_bytes(proj, res)
+    wf = openpyxl.load_workbook(io.BytesIO(data))
+    wv = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
+    for name in ("GK_KHAC", "SO_SANH_VAN_BAN") if res.compare else ("GK_KHAC",):
+        assert name in wf.sheetnames
+    # mọi ô công thức đều kèm giá trị tính sẵn
+    for ws in wf.worksheets:
+        for row in ws.iter_rows():
+            for c in row:
+                if isinstance(c.value, str) and c.value.startswith("="):
+                    assert wv[ws.title][c.coordinate].value is not None, f"{ws.title}!{c.coordinate}"
+    ws = wv["BẢNG TMĐT"]
+    tot = next(r for r in range(6, ws.max_row + 1) if ws[f"B{r}"].value == "TỔNG CỘNG")
+    assert abs(ws[f"H{tot}"].value - res.tmdt) < 1
+    assert ws[f"I{tot}"].value == "Ghi chú dòng tổng"

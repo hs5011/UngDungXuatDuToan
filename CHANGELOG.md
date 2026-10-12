@@ -5,6 +5,68 @@
 
 ---
 
+## 2026-10-12 – Lượt 21: Gom toàn bộ cấu hình lương về một chỗ (bước 8 → 8a)
+**Yêu cầu:** Lương cơ sở, hệ số lương… đang nằm rải rác (bước 1, 5, 8a, 8c) – gom hết về một màn hình ở bước 8 cho dễ cấu hình.
+
+**Đã sửa** – `app.py`
+- Bước 8 sắp xếp lại: **8a. Lương & hệ số lương** (mới, đầu trang) → 8b. Chi phí chung tư vấn (Bảng 3.2) → 8c. Mô hình
+  co giãn → 8d. Phần mềm nội bộ (CPC, TNCT, thuế, khấu hao) → 8e. Văn bản tham chiếu.
+- 8a gồm toàn bộ thông số lương:
+  - Lương cơ sở, vùng (Hdc), hệ số phụ cấp Hpc, BHXH+BHYT+BHTN kỹ sư, bậc lấy bình quân, ghi đè đơn giá tháng;
+  - Bảng hệ số lương kỹ sư KS-B1…B8 (sửa được, đơn giá tháng tự tính);
+  - Lương tối đa chuyên gia M1–M4, **hệ số nâng lương chuyên gia** (chuyển từ bước 1c sang), số ngày/tháng, kèm
+    đơn giá ngày từng mức;
+  - Bảng **hệ số lương + phụ cấp cán bộ QLDA** tự thực hiện (sửa được; thêm/xoá người, số người, số tháng vẫn ở bước 5)
+    và **tỷ lệ bảo hiểm QLDA** (chuyển từ bước 5a sang).
+- Bỏ khung "📌 … sửa ở đâu?" (không cần nữa vì mọi thứ đã ở 8a).
+- Bước 1c: bỏ ô hệ số nâng lương, thêm chú thích trỏ về 8a. Bước 5a: bỏ ô tỷ lệ bảo hiểm, chú thích trỏ về 8a.
+
+**Kiểm tra**
+- `python -m pytest`: 27/27 đạt.
+- Trình duyệt (dự án NTS): bước 8 hiển thị đủ 8a–8e, không lỗi console; sửa hệ số "Kế toán" 3,00 → 3,33 ở 8a →
+  lưu vào dự án và bước 5a hiện 3,33; đã trả lại 3,00.
+
+**Git:** đã duyệt – đẩy lên GitHub cùng lượt 20.
+
+---
+
+## 2026-10-12 – Lượt 20: Chỗ sửa lương cơ sở/hệ số lương; Excel xuất đủ nội dung; PM nội bộ chia đều các năm
+**Yêu cầu:** (1) Lương cơ sở, hệ số lương thay đổi thì sửa ở đâu; (2) file Excel xuất chưa đúng, đủ nội dung đang có
+trên hệ thống; (3) chọn phân bổ bao nhiêu năm thì "Chi phí phần mềm nội bộ theo yêu cầu riêng" chia đều cho các năm.
+
+**Đã sửa**
+- `dutoan/calc.py`: thêm `EVEN_XD = {"pm"}` – chế độ XD, khoản PM nội bộ mặc định chia đều cho số năm phân bổ
+  (các khoản khác giữ như cũ: chuẩn bị đầu tư năm đầu, còn lại năm cuối). Tỷ lệ đã sửa tay ở 7a vẫn được giữ.
+- `dutoan/excel_export.py`
+  - **Giá trị tính sẵn:** mọi ô công thức được ghi kèm giá trị (lấy từ calc) → mở bằng trình xem không tự tính
+    (Zalo, Outlook, điện thoại, Google Drive) vẫn thấy đủ số; Excel vẫn tự tính lại khi mở.
+  - Sheet mới `GK_KHAC` (chi tiết chi phí khác nhập tay, bước 2e) – dòng k6 BẢNG TMĐT tham chiếu tổng sheet này
+    (trước đây chỉ ghi một con số).
+  - Sheet mới `SO_SANH_VAN_BAN` (bảng 6b – chuyên gia vs NĐ 214/NĐ 19).
+  - BẢNG TMĐT: thêm ghi chú dòng TỔNG CỘNG (ghi chú đã sửa), thời điểm lập; bảng tổng hợp cuối có cột STT.
+  - `01_THAM_SO`: thêm số năm phân bổ, dự phòng tối thiểu, vùng, bậc KS bình quân, QTVH trọn gói, mô hình co giãn
+    (EXP, ngưỡng, mốc neo), thẩm tra thiết kế, bảng NĐ 214 (tỷ lệ/tối thiểu/tối đa – nay là ô tên `LCNT_*`,
+    công thức các sheet tư vấn thầu tham chiếu ô này thay cho số cứng).
+  - Phân bổ vốn: % hiện 2 số lẻ (33,33% thay vì 33%), cột "Còn lại" có cả ở dòng nhóm và TỔNG CỘNG, dòng tổng tô màu.
+  - TONG_HOP: cột ghi chú dùng ghi chú đã sửa. Dongia_NgayCong: thêm dòng hướng dẫn chỗ sửa lương cơ sở/hệ số.
+- `app.py`
+  - Bước 8: khung "📌 Khi nhà nước thay đổi lương cơ sở / hệ số lương thì sửa ở đâu?" (bảng chỉ dẫn từng loại).
+  - 8c: bảng hệ số lương kỹ sư KS-B1…B8 **sửa được** (trước chỉ xem), đơn giá tháng tự tính lại.
+  - 5a: chú thích công thức lương QLDA và chỗ sửa lương cơ sở. 7: mô tả mặc định mới. 9a: liệt kê đủ các sheet.
+- `tests/test_calc.py`: thêm 2 kiểm thử (PM nội bộ chia đều; Excel đủ sheet, mọi ô công thức có giá trị sẵn, ghi chú tổng).
+
+**Kiểm tra**
+- `python -m pytest`: 27/27 đạt.
+- Excel 16 (COM) tính lại 6 kịch bản (dự án NTS 4 năm, thuê, QLDA tự TH 3 năm, nhập TMĐT, mặc định có thiết bị + Gk,
+  tick Dùng VB các việc NĐ 214/NĐ 19): từng dòng BẢNG TMĐT, phân bổ khớp Python; **mọi ô công thức** có giá trị sẵn
+  trùng giá trị Excel tính lại (0 ô thiếu, 0 ô lệch).
+- Trình duyệt: bước 7 dự án NTS – PM nội bộ 3.933.436.750 đ/năm × 4 năm; bước 8 sửa KS-B1 2,34 → 2,50 thì đơn giá
+  tháng 14.297.283 → 15.274.875 đ (đã trả lại 2,34); bước 9 không lỗi.
+
+**Git:** đã duyệt – đẩy lên GitHub cùng lượt 21.
+
+---
+
 ## 2026-10-09 – Lượt 19: Chọn dự án như App_TestHieuNang (tự lưu, chọn lại, tạo, xoá)
 **Yêu cầu:** Bổ sung chỗ "Dự án" cho phép chọn dự án như thiết kế ở App_TestHieuNang (PerfTool).
 

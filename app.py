@@ -12,7 +12,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from dutoan.calc import compute, kdp_max, ks_month_price, vnd, sec_name, sec_kh, SEC_NOTES
+from dutoan.calc import compute, kdp_max, ks_month_price, day_price, vnd, sec_name, sec_kh, SEC_NOTES
 from dutoan.catalog import GROUP_BY_CODE, PM_ROLES, TASK_BY_ID
 from dutoan import storage
 from dutoan.defaults import GRADES, GRADE_NOTE, LOAI_HO_SO
@@ -547,10 +547,9 @@ def step_thong_tin():
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown("**Thuế, lương**")
+            st.markdown("**Thuế**")
             pct("Thuế GTGT (%)", ("tham_so", "vat"))
-            w("number_input", "Hệ số nâng lương chuyên gia (1,0 – 1,5)", ("tham_so", "he_so_nang"), min_value=0.1,
-              max_value=2.0, step=0.05)
+            st.caption("Lương cơ sở, hệ số lương, lương chuyên gia: bước 8 → 8a.")
             money("Chi phí thẩm định giá (đồng)", ("tham_so", "tham_dinh_gia"))
         with c2:
             st.markdown("**Công tắc**")
@@ -869,7 +868,9 @@ def step_qlda():
     with st.container(border=True):
         list_editor("qlda_nhan_su", ["vi_tri", "so_nguoi", "he_so_luong", "pc_chuc_vu", "pc_khu_vuc", "pc_khac", "so_thang"],
                     ["Vị trí", "Số người", "Hệ số lương", "PC chức vụ", "PC khu vực", "PC khác", "Số tháng"])
-        pct("Tỷ lệ BHXH, BHYT, BHTN, KPCĐ (%)", ("tham_so", "bh_qlda"))
+        st.caption(f"Thành tiền = (hệ số lương + phụ cấp) × lương cơ sở {vnd(ts['luong_co_so'])} đ × số người × số tháng; "
+                   "bảo hiểm " + f"{ts['bh_qlda']:.1%}".replace(".", ",") + ". Lương cơ sở, hệ số lương, phụ cấp, tỷ lệ bảo hiểm cũng sửa được tập "
+                   "trung ở bước 8 → 8a.")
     st.subheader("5b. Nội dung chi khác (Điều 30 NĐ 10/2021)")
     with st.container(border=True):
         list_editor("qlda_chi_khac", ["ten", "gia_tri"], ["Nội dung", "Giá trị (đồng)"], money_cols=("gia_tri",))
@@ -1011,7 +1012,8 @@ def step_tong_hop():
 def step_phan_bo():
     page_header("Phân bổ vốn theo năm", "Mặc định: " + (
         "chuẩn bị đầu tư, mua sắm, đào tạo, triển khai vào năm đầu; thuê, vận hành, QLDA, giám sát, dự phòng chia đều; "
-        "quyết toán năm cuối." if ts["che_do"] == "THUE" else "chuẩn bị đầu tư vào năm đầu, phần còn lại năm cuối (như template)."))
+        "quyết toán năm cuối." if ts["che_do"] == "THUE" else "chuẩn bị đầu tư vào năm đầu; chi phí phần mềm nội bộ chia đều cho các năm; "
+        "phần còn lại năm cuối. Đổi số năm ở bước 1 → 1b."))
     pb = res.phan_bo
     n = pb["n"]
     labels = pb["labels"]
@@ -1067,28 +1069,79 @@ def step_phan_bo():
 def step_cau_hinh():
     page_header("Cấu hình nâng cao", "Mọi số dưới đây là tham số; mặc định lấy theo template và các văn bản đã đối chiếu. "
                 "Một số mục chưa đối chiếu toàn văn (lương cơ sở, điều kiện M2–M4, công thức QĐ 320) – kiểm tra trước khi dùng.")
-    st.subheader("8a. Chuyên gia tư vấn & chi phí chung")
+    # ---------------- 8a. Mọi tham số lương tập trung một chỗ
+    st.subheader("8a. Lương & hệ số lương")
     with st.container(border=True):
-        c1, c2 = st.columns(2)
+        st.caption("Mọi thông số lương của dự án nằm ở đây: khi nhà nước đổi lương cơ sở, hệ số lương hay mức lương "
+                   "chuyên gia thì chỉ cần sửa trong mục này. Áp dụng cho **dự án đang mở**; muốn dự án mới tự lấy mức "
+                   "mới thì sửa mặc định trong `dutoan/defaults.py`.")
+        c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown("**Lương tối đa / tháng (TT 07/2026/TT-BNV)**")
-            for gname in GRADES:
-                money(f"{gname} – {GRADE_NOTE[gname]}", ("tham_so", "luong", gname))
-            w("number_input", "Số ngày/tháng", ("tham_so", "ngay_thang"), min_value=1, step=1)
+            st.markdown("**Lương cơ sở & đơn giá kỹ sư (QĐ 320)**")
+            money("Lương cơ sở (đồng)", ("tham_so", "luong_co_so"),
+                  help="Dùng cho đơn giá kỹ sư (PM nội bộ, bước 4) và lương QLDA tự thực hiện (bước 5)")
+            w("selectbox", "Vùng (Hdc)", ("tham_so", "vung"), options=["I", "II", "III", "IV"])
+            w("number_input", "Hệ số phụ cấp Hpc", ("tham_so", "ks_hpc"), min_value=0.0, step=0.1)
+            pct("BHXH + BHYT + BHTN kỹ sư (%)", ("tham_so", "ks_bh"))
+            w("multiselect", "Bậc kỹ sư lấy bình quân", ("tham_so", "ks_bac_chon"), options=list(range(1, 9)))
+            money("Ghi đè đơn giá tháng bình quân (đồng)", ("tham_so", "pm_don_gia_thang"), allow_empty=True,
+                  placeholder="Để trống = theo công thức")
+            st.caption("Gms là số nhập nên lương tăng thì **số man-month PM nội bộ giảm**, Gms không đổi.")
         with c2:
-            st.markdown("**Chi phí chung tư vấn – Bảng 3.2**")
+            st.markdown("**Hệ số lương kỹ sư (Hcb) – sửa cột Hệ số**")
+            base = pd.DataFrame([{"Bậc": f"KS-B{b}", "Hệ số": ts["ks_he_so"][b - 1],
+                                  "Đơn giá tháng": vnd(ks_month_price(b, ts))} for b in range(1, 9)])
+            ed = editor(base, height=ed_height(len(base)), key=f"kshs{ss.ver}_{df_hash(base)}", hide_index=True,
+                        disabled=["Bậc", "Đơn giá tháng"],
+                        column_config={"Hệ số": st.column_config.NumberColumn(min_value=0.0, step=0.01, format="%.2f"),
+                                       "Đơn giá tháng": st.column_config.TextColumn("Đơn giá tháng (đồng)")})
+            new = [float(clean(x) or 0) for x in ed["Hệ số"]]
+            if new != [float(x) for x in ts["ks_he_so"]]:
+                ts["ks_he_so"] = new
+                st.rerun()
+        with c3:
+            st.markdown("**Chuyên gia tư vấn (TT 07/2026/TT-BNV)**")
+            for gname in GRADES:
+                money(f"{gname} – lương tối đa/tháng (đồng)", ("tham_so", "luong", gname), help=GRADE_NOTE[gname])
+            w("number_input", "Hệ số nâng lương chuyên gia (1,0 – 1,5)", ("tham_so", "he_so_nang"), min_value=0.1,
+              max_value=2.0, step=0.05)
+            w("number_input", "Số ngày làm việc/tháng", ("tham_so", "ngay_thang"), min_value=1, step=1)
+            st.caption("Đơn giá ngày = lương tháng × hệ số nâng ÷ số ngày: " + " · ".join(
+                f"{g} {vnd(day_price(g, ts))} đ" for g in GRADES))
+
+        st.markdown("**Hệ số lương cán bộ QLDA tự thực hiện (Mẫu 02/DT-QLDA)** – thêm/xoá người, số người, số tháng "
+                    "ở bước 5")
+        cols = ["vi_tri", "he_so_luong", "pc_chuc_vu", "pc_khu_vuc", "pc_khac"]
+        labs = ["Vị trí", "Hệ số lương", "PC chức vụ", "PC khu vực", "PC khác"]
+        qbase = pd.DataFrame([{lab: r.get(c) for c, lab in zip(cols, labs)} for r in proj["qlda_nhan_su"]], columns=labs)
+        if len(qbase):
+            qed = editor(qbase, height=ed_height(len(qbase)), key=f"qlhs{ss.ver}_{df_hash(qbase)}", hide_index=True,
+                         disabled=["Vị trí"],
+                         column_config={l: st.column_config.NumberColumn(l, min_value=0.0, step=0.01, format="%.2f")
+                                        for l in labs[1:]})
+            if not qed.equals(qbase):
+                for r, (_, b) in zip(proj["qlda_nhan_su"], qed.iterrows()):
+                    for c, lab in zip(cols[1:], labs[1:]):
+                        r[c] = float(clean(b[lab]) or 0)
+                st.rerun()
+        else:
+            st.caption("Chưa có cán bộ QLDA – thêm ở bước 5.")
+        pct("Tỷ lệ BHXH, BHYT, BHTN, KPCĐ cán bộ QLDA (%)", ("tham_so", "bh_qlda"))
+
+    st.subheader("8b. Chi phí chung tư vấn – Bảng 3.2")
+    with st.container(border=True):
+        c1, c2, c3 = st.columns(3)
+        with c1:
             money("Ngưỡng 1: Ccg ≤", ("tham_so", "cql", "nguong1"))
             money("Ngưỡng 2: Ccg <", ("tham_so", "cql", "nguong2"))
-            a, b, c = st.columns(3)
-            with a:
-                pct("Bậc 1 (%)", ("tham_so", "cql", "r1"))
-            with b:
-                pct("Bậc 2 (%)", ("tham_so", "cql", "r2"))
-            with c:
-                pct("Bậc 3 (%)", ("tham_so", "cql", "r3"))
+        with c2:
+            pct("Bậc 1 (%)", ("tham_so", "cql", "r1"))
+            pct("Bậc 2 (%)", ("tham_so", "cql", "r2"))
+            pct("Bậc 3 (%)", ("tham_so", "cql", "r3"))
+        with c3:
             pct("Thu nhập chịu thuế tính trước – tư vấn (%)", ("tham_so", "tn_tv"))
 
-    st.subheader("8b. Mô hình co giãn theo quy mô")
+    st.subheader("8c. Mô hình co giãn theo quy mô")
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -1102,27 +1155,17 @@ def step_cau_hinh():
             money("Việc quy mô M xuất hiện khi Gms ≥", ("tham_so", "nguong_M"))
             money("Việc quy mô L xuất hiện khi Gms ≥", ("tham_so", "nguong_L"))
 
-    st.subheader("8c. Phần mềm nội bộ & đơn giá kỹ sư (QĐ 320)")
+    st.subheader("8d. Phần mềm nội bộ")
     with st.container(border=True):
-        c1, c2, c3 = st.columns(3)
+        c1, c2 = st.columns(2)
         with c1:
             pct("Chi phí chung CPC (%)", ("tham_so", "pm_cpc"))
             pct("Thu nhập chịu thuế TNCT (%)", ("tham_so", "pm_tn"))
+        with c2:
             pct("Thuế/phí PM nội bộ (%) – template 0%", ("tham_so", "pm_thue"))
             w("number_input", "Khấu hao PM (năm)", ("tham_so", "khau_hao_nam"), min_value=1, step=1)
-        with c2:
-            money("Lương cơ sở (đồng)", ("tham_so", "luong_co_so"))
-            w("selectbox", "Vùng (Hdc)", ("tham_so", "vung"), options=["I", "II", "III", "IV"])
-            pct("BHXH + BHYT + BHTN (%)", ("tham_so", "ks_bh"))
-            w("number_input", "Hệ số phụ cấp Hpc", ("tham_so", "ks_hpc"), min_value=0.0, step=0.1)
-            w("multiselect", "Bậc lấy bình quân", ("tham_so", "ks_bac_chon"), options=list(range(1, 9)))
-            money("Ghi đè đơn giá tháng bình quân (đồng)", ("tham_so", "pm_don_gia_thang"), allow_empty=True,
-                  placeholder="Để trống = theo công thức")
-        with c3:
-            show_table([{"Bậc": f"KS-B{b}", "Hệ số": ts["ks_he_so"][b - 1], "Đơn giá tháng": ks_month_price(b, ts)}
-                        for b in range(1, 9)], money_cols=("Đơn giá tháng",))
 
-    st.subheader("8d. Văn bản tham chiếu (NĐ 19, NĐ 193, NĐ 214, TT 28)")
+    st.subheader("8e. Văn bản tham chiếu (NĐ 19, NĐ 193, NĐ 214, TT 28)")
     with st.container(border=True):
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -1173,8 +1216,11 @@ def step_xuat():
             st.download_button("⬇️ Tải file Excel", export_bytes(proj, res), file_name=f"Du_toan_{name}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary",
                                width="stretch")
-            st.caption("Gồm: 01_THAM_SO, BẢNG TMĐT, phân bổ vốn, các sheet Cp_* tư vấn, đào tạo, triển khai, QTVH, "
-                       "kiểm thử TT 41, PM nội bộ, đơn giá, bảng NĐ 193/TT 28. Ô nền vàng là ô nhập.")
+            st.caption("Gồm: 01_THAM_SO (toàn bộ tham số), BẢNG TMĐT (kèm ghi chú đã sửa), phân bổ vốn theo năm, "
+                       "các sheet Cp_* tư vấn, đào tạo, triển khai, QTVH, kiểm thử TT 41, PM nội bộ, QLDA tự thực hiện, "
+                       "danh mục thiết bị/PM/Gk nhập tay, đơn giá chuyên gia & kỹ sư, bảng NĐ 193/TT 28, so sánh văn bản (6b). "
+                       "Ô nền vàng là ô nhập. Mọi ô công thức đã kèm sẵn giá trị nên xem trước trên điện thoại/Zalo "
+                       "cũng thấy đủ số.")
     with c2:
         st.subheader("9b. Sao lưu dự án về máy tính")
         with st.container(border=True):
