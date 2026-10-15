@@ -5,6 +5,20 @@
 
 ---
 
+## 2026-10-15 – Lượt 22: Viết hướng dẫn chạy local và triển khai server
+**Yêu cầu:** Hướng dẫn chạy web ở local và build lên server, viết thành file lưu lại.
+
+**Đã sửa**
+- `HUONG_DAN_TRIEN_KHAI.md` (mới): chạy local trên Windows (venv, streamlit, pytest, dữ liệu); triển khai server Linux
+  (systemd + Nginx + Basic Auth + HTTPS), Docker (kèm Dockerfile mẫu, volume `workspace`), server Windows (NSSM, tường lửa);
+  cập nhật, sao lưu, xử lý sự cố, lưu ý bảo mật (Streamlit không có đăng nhập).
+- Không đổi mã nguồn / công thức.
+
+**Kiểm tra:** không áp dụng (chỉ tài liệu); đã đối chiếu `requirements.txt`, `chay_ung_dung.bat`, `dutoan/storage.py` (đường dẫn `workspace/projects`).
+**Còn treo:** chưa thử thực tế trên server; chưa thêm `Dockerfile` vào repo (chỉ có mẫu trong hướng dẫn); chưa commit/push, chờ duyệt.
+
+---
+
 ## 2026-10-12 – Lượt 21: Gom toàn bộ cấu hình lương về một chỗ (bước 8 → 8a)
 **Yêu cầu:** Lương cơ sở, hệ số lương… đang nằm rải rác (bước 1, 5, 8a, 8c) – gom hết về một màn hình ở bước 8 cho dễ cấu hình.
 
