@@ -40,6 +40,7 @@ def _default():
             "nhap": "GMS",  # GMS | TMDT
             "gms": 3_000_000_000.0,
             "tmdt": 4_000_000_000.0,
+            "du_phong_theo": "PCT",  # chế độ TMĐT: dự phòng tối thiểu theo PCT (Kdp %) | TIEN (đồng)
             "du_phong_toi_thieu": 0.0,
             "kdp": None,  # bắt buộc nhập; None → tạm dùng mức tối đa + cảnh báo
             "kdp_truot_gia": 0.0,
@@ -157,4 +158,6 @@ def merge_defaults(data):
                 dst[k] = v
 
     merge(base, data or {})
+    if data and "du_phong_theo" not in data.get("tham_so", {}):
+        base["tham_so"]["du_phong_theo"] = "TIEN"  # file cũ chỉ có dự phòng tối thiểu theo số tiền
     return base

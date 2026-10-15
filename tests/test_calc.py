@@ -74,11 +74,27 @@ def test_che_do_gms_du_phong_khong_vuot_toi_da(proj):
 
 def test_che_do_tmdt_gms_lon_nhat(proj):
     ts = proj["tham_so"]
-    ts["nhap"], ts["tmdt"], ts["du_phong_toi_thieu"] = "TMDT", 5e9, 20e6
+    ts["nhap"], ts["tmdt"], ts["du_phong_theo"], ts["du_phong_toi_thieu"] = "TMDT", 5e9, "TIEN", 20e6
     r = compute(proj)
     assert r.tmdt == 5e9
     assert r.totals["V"] >= 20e6
     assert _compute_at(proj, r.gms + 1000, 5e9).totals["V"] < 20e6
+
+
+def test_che_do_tmdt_du_phong_theo_ty_le(proj):
+    ts = proj["tham_so"]
+    ts["nhap"], ts["tmdt"], ts["du_phong_theo"], ts["kdp"] = "TMDT", 5e9, "PCT", 0.05
+    r = compute(proj)
+    assert r.tmdt == 5e9
+    assert r.totals["V"] >= 0.05 * r.totals["base"]
+    t = _compute_at(proj, r.gms + 1000, 5e9).totals
+    assert t["V"] < 0.05 * t["base"]
+
+
+def test_file_cu_giu_du_phong_theo_so_tien():
+    from dutoan.defaults import merge_defaults
+    assert merge_defaults({"tham_so": {"du_phong_toi_thieu": 23e6}})["tham_so"]["du_phong_theo"] == "TIEN"
+    assert merge_defaults(None)["tham_so"]["du_phong_theo"] == "PCT"
 
 
 def test_thue_pm_bang_gms_chia_khau_hao(proj):

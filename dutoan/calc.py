@@ -590,13 +590,17 @@ def _compute_at(proj, gms, tmdt_fixed=None):
 
 
 def solve_gms(proj):
-    """Chế độ nhập TMĐT: tìm Gms lớn nhất sao cho dự phòng ≥ mức tối thiểu (dự phòng nhỏ nhất)."""
+    """Chế độ nhập TMĐT: tìm Gms lớn nhất sao cho dự phòng ≥ mức tối thiểu (dự phòng nhỏ nhất).
+    Mức tối thiểu theo số tiền (TIEN) hoặc theo tỷ lệ (PCT): (Kdp + Kdp trượt giá) × (Gtb + Gqlda + Gtv + Gk)."""
     ts = proj["tham_so"]
     tmdt = ts["tmdt"]
+    theo_pct = ts["du_phong_theo"] == "PCT"
     dp_min = ts["du_phong_toi_thieu"]
+    k = (ts["kdp"] or 0.0) + ts["kdp_truot_gia"]
 
     def ok(g):
-        return _compute_at(proj, g, tmdt).totals["V"] >= dp_min - 1e-6
+        t = _compute_at(proj, g, tmdt).totals
+        return t["V"] >= (k * t["base"] if theo_pct else dp_min) - 1e-6
 
     if not ok(0):
         return 0.0, False
@@ -679,7 +683,9 @@ def compute(proj):
     kmax = kdp_max(ts)
     if ts["nhap"] == "GMS" and ts["kdp"] is None:
         warnings.append(f"Chưa nhập Kdp áp dụng → tạm dùng mức tối đa {kmax:.0%}.")
-    if ts["nhap"] == "GMS" and ts["kdp"] is not None and ts["kdp"] > kmax:
+    if ts["nhap"] == "TMDT" and ts["du_phong_theo"] == "PCT" and ts["kdp"] is None:
+        warnings.append("Chọn dự phòng tối thiểu theo % nhưng chưa nhập Kdp → tạm dùng 0%.")
+    if ts["kdp"] is not None and ts["kdp"] > kmax and (ts["nhap"] == "GMS" or ts["du_phong_theo"] == "PCT"):
         warnings.append(f"Kdp áp dụng {ts['kdp']:.1%} vượt mức tối đa {kmax:.0%}.")
     if res.totals["dp_ratio"] > kmax + 1e-9:
         warnings.append(f"Dự phòng = {res.totals['dp_ratio']:.2%} của (Gtb + Gqlda + Gtv + Gk), vượt Kdp tối đa {kmax:.0%}.")

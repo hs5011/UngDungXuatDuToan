@@ -527,12 +527,20 @@ def step_thong_tin():
             else:
                 money("TMĐT (đồng) *", ("tham_so", "tmdt"))
                 kpi_cards([{"label": "→ Giá trị phần mềm Gms tương ứng", "value": res.gms, "main": True,
-                            "sub": "Gms lớn nhất để dự phòng nhỏ nhất"}])
-                money("Dự phòng tối thiểu (đồng)", ("tham_so", "du_phong_toi_thieu"))
+                            "sub": f"Gms lớn nhất để dự phòng nhỏ nhất · dự phòng {vnd(res.totals['V'])} đ "
+                                   + f"({res.totals['dp_ratio']:.2%})".replace(".", ",")}])
+                w("radio", "Dự phòng tối thiểu theo", ("tham_so", "du_phong_theo"), options=["PCT", "TIEN"],
+                  format_func={"PCT": "Tỷ lệ Kdp (%)", "TIEN": "Số tiền (đồng)"}.get, horizontal=True)
             kmax = kdp_max(ts)
-            w("number_input", f"Kdp áp dụng (%) * – tối đa {kmax:.0%}", ("tham_so", "kdp"), scale=100, min_value=0.0,
-              max_value=100.0, step=0.5, format="%.2f", placeholder="Bắt buộc nhập, không mặc định",
-              disabled=ts["nhap"] == "TMDT", help="Chế độ nhập TMĐT: dự phòng là phần còn lại, không dùng Kdp.")
+            if ts["nhap"] == "TMDT" and ts["du_phong_theo"] == "TIEN":
+                money("Dự phòng tối thiểu (đồng)", ("tham_so", "du_phong_toi_thieu"))
+            elif ts["nhap"] == "TMDT":
+                w("number_input", f"Kdp tối thiểu (%) – tối đa {kmax:.0%}", ("tham_so", "kdp"), scale=100, min_value=0.0,
+                  max_value=100.0, step=0.5, format="%.2f", placeholder="Nhập %, để trống = 0%",
+                  help="Dự phòng ≥ (Kdp + dự phòng trượt giá) × (Gtb + Gqlda + Gtv + Gk); Gms lấy lớn nhất thoả điều kiện.")
+            else:
+                w("number_input", f"Kdp áp dụng (%) * – tối đa {kmax:.0%}", ("tham_so", "kdp"), scale=100, min_value=0.0,
+                  max_value=100.0, step=0.5, format="%.2f", placeholder="Bắt buộc nhập, không mặc định")
             a, b = st.columns(2)
             with a:
                 pct("Dự phòng trượt giá (%)", ("tham_so", "kdp_truot_gia"), help="NĐ 224 Điều 49.7")

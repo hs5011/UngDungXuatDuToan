@@ -155,11 +155,18 @@ def write_params(bk, proj, res):
         "Chế độ nhập TMĐT: Gms là kết quả giải lặp (lớn nhất để dự phòng nhỏ nhất)." if ts["nhap"] == "TMDT" else "Giá trị nhập.")
     if ts["nhap"] == "TMDT":
         row("TMĐT nhập (đồng)", ts["tmdt"], "TMDT_NHAP", NUM)
-    row("Kdp áp dụng", ts["kdp"] if ts["kdp"] is not None else kdp_max(ts), "KDP", PCT,
-        "Nhập trong giới hạn pháp lý; không mặc định." if ts["kdp"] is not None else "CHƯA NHẬP – tạm dùng mức tối đa.")
+    if ts["nhap"] == "TMDT":
+        row("Kdp tối thiểu" if ts["du_phong_theo"] == "PCT" else "Kdp (không dùng)", ts["kdp"] or 0.0, "KDP", PCT,
+            "Dự phòng thực tế = TMĐT − cơ sở tính dự phòng.")
+    else:
+        row("Kdp áp dụng", ts["kdp"] if ts["kdp"] is not None else kdp_max(ts), "KDP", PCT,
+            "Nhập trong giới hạn pháp lý; không mặc định." if ts["kdp"] is not None else "CHƯA NHẬP – tạm dùng mức tối đa.")
     row("Kdp tối đa", kdp_max(ts), "KDP_MAX", PCT)
     row("Dự phòng trượt giá (NĐ 224 Điều 49.7)", ts["kdp_truot_gia"], "KDP_TG", PCT)
-    if ts["nhap"] == "TMDT":
+    if ts["nhap"] == "TMDT" and ts["du_phong_theo"] == "PCT":
+        row("Dự phòng tối thiểu theo", "Tỷ lệ: (Kdp + Kdp trượt giá) × (Gtb + Gqlda + Gtv + Gk)", None, None,
+            "Dùng khi giải ngược Gms từ TMĐT.")
+    elif ts["nhap"] == "TMDT":
         row("Dự phòng tối thiểu (đồng)", ts["du_phong_toi_thieu"], None, NUM, "Dùng khi giải ngược Gms từ TMĐT.")
     row("Làm tròn TMĐT lên bội số (đồng)", ts["lam_tron"] or 1, "LAM_TRON", NUM)
     row("Số năm thuê", ts["so_nam_thue"], "SO_NAM")

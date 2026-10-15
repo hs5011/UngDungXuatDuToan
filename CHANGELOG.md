@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-10-15 – Lượt 23: Chế độ nhập TMĐT cho phép đặt dự phòng tối thiểu theo % (Kdp)
+**Yêu cầu:** Chọn nhập TMĐT thì ô Kdp bị khoá; muốn nhập dự phòng tối thiểu theo % thay vì chỉ theo số tiền.
+
+**Đã sửa**
+- `dutoan/defaults.py`: thêm `tham_so.du_phong_theo` = `PCT` (mặc định dự án mới) | `TIEN`. File dự án cũ (chưa có khoá)
+  tự gán `TIEN` để giữ nguyên kết quả cũ.
+- `dutoan/calc.py`:
+  - `solve_gms`: theo `PCT` → Gms lớn nhất sao cho dự phòng ≥ (Kdp + Kdp trượt giá) × (Gtb + Gqlda + Gtv + Gk);
+    theo `TIEN` → như cũ (≥ số tiền tối thiểu).
+  - Cảnh báo: chế độ % mà chưa nhập Kdp (tạm 0%); Kdp vượt mức tối đa áp dụng cả cho chế độ TMĐT theo %.
+- `app.py` (bước 1b): chế độ TMĐT có thêm lựa chọn **Dự phòng tối thiểu theo: Tỷ lệ Kdp (%) / Số tiền (đồng)**;
+  chọn % thì mở ô **Kdp tối thiểu (%)**, chọn số tiền thì hiện ô **Dự phòng tối thiểu (đồng)**. Thẻ Gms hiện thêm
+  dự phòng thực tế (số tiền và %).
+- `dutoan/excel_export.py` (sheet tham số): ghi đúng cách xác định dự phòng tối thiểu và Kdp theo chế độ TMĐT.
+- `tests/test_calc.py`: thêm test dự phòng theo tỷ lệ và test file cũ giữ chế độ số tiền.
+
+**Kiểm tra:** `pytest` 29 passed; xuất Excel chế độ TMĐT % chạy được; thử trên web (dự án thử, đã xoá): TMĐT 4 tỷ,
+Kdp 5% → Gms 2.733.640.000, dự phòng 199.034.808 đ (5,24%).
+**Ghi chú:** dự phòng có thể cao hơn % đặt vì một số chi phí (triển khai, tv1…) nhảy bậc theo Gms – tăng Gms thêm
+1.000 đ sẽ làm dự phòng rơi xuống dưới 5%.
+**Đã chốt với người dùng:** dự phòng tối thiểu theo % = Kdp + dự phòng trượt giá (nhập Kdp 5% + trượt giá 3% → 8%); giữ nguyên cách tính này.
+**Còn treo:** không.
+
+---
+
 ## 2026-10-15 – Lượt 22: Viết hướng dẫn chạy local và triển khai server
 **Yêu cầu:** Hướng dẫn chạy web ở local và build lên server, viết thành file lưu lại.
 
