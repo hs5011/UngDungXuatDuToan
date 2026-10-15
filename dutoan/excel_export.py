@@ -715,10 +715,8 @@ def write_summary(bk, proj, res, item_f, tables):
     put(ws, f"E{b + 1}", "TMĐT xác định")
     if ts["nhap"] == "TMDT":
         put(ws, f"F{b + 1}", "=TMDT_NHAP", NUM, bold=True, cv=res.tmdt)
-        put(ws, f"I{b + 1}", "TMĐT nhập; Gms giải ngược để dự phòng nhỏ nhất.")
     else:
         put(ws, f"F{b + 1}", f"=IFERROR(IF(CEILING(F{b}*(1+KDP+KDP_TG),LAM_TRON)-F{b}>KDP_MAX*F{b},FLOOR(F{b}*(1+KDP+KDP_TG),LAM_TRON),CEILING(F{b}*(1+KDP+KDP_TG),LAM_TRON)),0)", NUM, bold=True, cv=res.tmdt)
-        put(ws, f"I{b + 1}", "Làm tròn lên [cơ sở × (1 + Kdp)] (xuống nếu vượt Kdp tối đa); có vòng lặp với kiểm toán/lệ phí (đã bật tính lặp).")
     bk.name("TMDT", ws, f"F{b + 1}")
     put(ws, f"E{b + 2}", "TMĐT (tỷ đồng)")
     put(ws, f"F{b + 2}", "=TMDT/1000000000", "#,##0.000", cv=res.tmdt / 1e9)
@@ -784,6 +782,9 @@ def write_summary(bk, proj, res, item_f, tables):
     put(ws, f"E{b + 9}", "Giá gói thầu (Gtb trước thuế ÷ số gói)")
     put(ws, f"F{b + 9}", f"=F{sec_rows['I']}/SO_GOI", NUM, cv=sec_val["I"][0] / res.counts["goi"] if res.counts["goi"] else 0)
     bk.name("GIA_GOI", ws, f"F{b + 9}")
+    # Khối tính trung gian chỉ phục vụ công thức → ẩn, không hiển thị khi xuất
+    for rr_ in range(b, b + 10):
+        ws.row_dimensions[rr_].hidden = True
 
     # Bảng tổng hợp
     t = b + 12

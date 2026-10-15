@@ -1249,7 +1249,10 @@ def step_xuat():
 PAGES = [step_thong_tin, step_thiet_bi, step_cong_viec, step_pm, step_qlda, step_tong_hop, step_phan_bo,
          step_cau_hinh, step_xuat]
 with st.sidebar:  # khung script ẩn đặt cuối thanh bên để không tạo khoảng trống ở trang chính
-    components.html(FMT_SCRIPT, height=0)
+    if hasattr(st, "iframe"):  # Streamlit mới: components.v1.html sắp bị gỡ, in cảnh báo mỗi lần chạy lại
+        st.iframe(FMT_SCRIPT, height=1)
+    else:
+        components.html(FMT_SCRIPT, height=0)
 PAGES[ss.step]()
 nav_buttons()
 

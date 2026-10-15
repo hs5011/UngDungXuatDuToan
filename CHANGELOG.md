@@ -5,6 +5,31 @@
 
 ---
 
+## 2026-10-15 – Lượt 25: Hết cảnh báo `st.components.v1.html` trong cửa sổ chạy
+**Yêu cầu:** Giải thích và xử lý cảnh báo "`st.components.v1.html` will be removed after 2026-06-01" in lặp lại.
+
+**Đã sửa**
+- `app.py`: script định dạng ô tiền (đặt ở thanh bên) dùng `st.iframe` khi Streamlit có hàm này (1.65 có), giữ
+  `components.html` làm phương án dự phòng cho bản cũ. Cảnh báo chỉ là thông báo ngừng hỗ trợ, không phải lỗi.
+
+**Kiểm tra:** `python -m pytest` 29 passed. **Còn treo:** chưa chạy lại giao diện để xác nhận ô tiền vẫn tự chèn dấu chấm;
+chưa commit/push. Lượt 24 (ẩn khối TMĐT trong Excel) cũng chờ duyệt.
+
+---
+
+## 2026-10-15 – Lượt 24: Ẩn khối tính trung gian TMĐT trong Excel xuất
+**Yêu cầu:** Khi xuất Excel bỏ các dòng "Cơ sở tính dự phòng… Giá gói thầu" và ghi chú "TMĐT nhập; Gms giải ngược…".
+
+**Đã sửa**
+- `dutoan/excel_export.py`: bỏ 2 ghi chú ở cột I; ẩn 10 dòng khối trung gian (cơ sở dự phòng, TMĐT, tỷ lệ nội suy,
+  hệ số TB, giá trị kiểm toán, dự phòng/cơ sở, giá gói thầu). Các ô này vẫn tồn tại (bị ẩn) vì công thức khác
+  tham chiếu (TMDT, GIA_GOI, tỷ lệ kiểm toán/thẩm tra/thẩm định) — xoá hẳn sẽ làm sai kết quả.
+
+**Kiểm tra:** `python -m pytest` 29 passed.
+**Còn treo:** chưa mở Excel kiểm tra trực quan; chưa commit/push (chờ duyệt).
+
+---
+
 ## 2026-10-15 – Lượt 23: Chế độ nhập TMĐT cho phép đặt dự phòng tối thiểu theo % (Kdp)
 **Yêu cầu:** Chọn nhập TMĐT thì ô Kdp bị khoá; muốn nhập dự phòng tối thiểu theo % thay vì chỉ theo số tiền.
 
