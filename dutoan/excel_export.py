@@ -326,6 +326,10 @@ LIST_TITLES = {
 }
 
 
+def _has_data(d):
+    return bool(d.get("ten") or d.get("so_luong") or d.get("don_gia"))
+
+
 def write_list(bk, proj, key):
     sname, text = LIST_TITLES[key]
     ws = bk.sheet(sname)
@@ -932,14 +936,17 @@ def build_workbook(proj, res):
     write_dongia_ks(bk, proj)
 
     item_f = {}
-    list_refs = {}
-    for k in ("thiet_bi", "pm_thuong_mai", "tb_khac") + (("dv_thue_nam",) if ts["che_do"] == "THUE" else ()):
-        list_refs[k] = write_list(bk, proj, k)
-    item_f["thiet_bi"] = ("=" + list_refs["thiet_bi"][0], "=" + list_refs["thiet_bi"][1])
-    item_f["pm_tm"] = ("=" + list_refs["pm_thuong_mai"][0], "=" + list_refs["pm_thuong_mai"][1])
-    item_f["tb_khac"] = ("=" + list_refs["tb_khac"][0], "=" + list_refs["tb_khac"][1])
-    if "dv_thue_nam" in list_refs:
-        item_f["dv_nam"] = (f"={list_refs['dv_thue_nam'][0]}*SO_NAM", f"={list_refs['dv_thue_nam'][1]}*SO_NAM")
+    # Danh sách không nhập dòng nào thì không xuất sheet, khoản mục tương ứng = 0
+    for k, ik in (("thiet_bi", "thiet_bi"), ("pm_thuong_mai", "pm_tm"), ("tb_khac", "tb_khac"),
+                  ("dv_thue_nam", "dv_nam")):
+        if k == "dv_thue_nam" and ts["che_do"] != "THUE":
+            continue
+        if any(_has_data(d) for d in proj[k]):
+            pn, vn = write_list(bk, proj, k)
+            mul = "*SO_NAM" if k == "dv_thue_nam" else ""
+            item_f[ik] = (f"={pn}{mul}", f"={vn}{mul}")
+        else:
+            item_f[ik] = (0, 0)
 
     pm_pre, pm_vat = write_pm(bk, proj, res)
     if ts["che_do"] == "THUE":
@@ -960,7 +967,10 @@ def build_workbook(proj, res):
             item_f[key_of[code]] = (f"={pn}", f"={vn}")
     if res.qlda_tu_th:
         item_f["qlda"] = write_qlda_tu_th(bk, proj, res)
-    item_f["gk_khac"] = ("=" + write_gk_khac(bk, proj), 0)
+    if any(d.get("ten") or d.get("gia_tri") for d in proj["gk_khac"]):
+        item_f["gk_khac"] = ("=" + write_gk_khac(bk, proj), 0)
+    else:
+        item_f["gk_khac"] = (0, 0)
 
     tables = write_tables(bk, proj)
     _, cells = write_summary(bk, proj, res, item_f, tables)

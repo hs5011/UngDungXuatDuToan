@@ -5,6 +5,19 @@
 
 ---
 
+## 2026-10-15 – Lượt 26: Không xuất sheet danh sách bước 2 nếu chưa nhập
+**Yêu cầu:** Nếu các mục 2a, 2b, 2c, 2e (và 2d thuê hằng năm) không nhập thì không xuất các sheet này ra Excel.
+
+**Đã sửa**
+- `dutoan/excel_export.py`: `build_workbook` chỉ tạo sheet `1_GMS_THIET_BI`, `2_GMS_PM_TM`, `4_GDVTK_KHAC`,
+  `DV_THUE_NAM`, `GK_KHAC` khi danh sách có dòng nhập (có tên, khối lượng hoặc đơn giá/giá trị); không thì khoản mục
+  tương ứng trong BẢNG TMĐT đặt = 0. Thêm hàm `_has_data`.
+
+**Kiểm tra:** `python -m pytest` 29 passed; xuất thử dự án không nhập (không còn 5 sheet) và dự án có thiết bị + Gk (có sheet tương ứng).
+**Còn treo:** chưa mở Excel kiểm tra trực quan.
+
+---
+
 ## 2026-10-15 – Lượt 25: Hết cảnh báo `st.components.v1.html` trong cửa sổ chạy
 **Yêu cầu:** Giải thích và xử lý cảnh báo "`st.components.v1.html` will be removed after 2026-06-01" in lặp lại.
 
