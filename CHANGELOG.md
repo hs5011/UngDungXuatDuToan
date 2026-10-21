@@ -5,6 +5,78 @@
 
 ---
 
+## 2026-10-21 – Lượt 30: Bổ sung test bao phủ toàn bộ chức năng
+**Yêu cầu:** sinh thêm test để kiểm tra logic các mục tính đã đúng chưa.
+
+**Đã sửa**
+- `tests/test_full_coverage.py` (mới): 42 test case bao phủ các mục chưa được test:
+  - Tiện ích thuần: `rnd` (làm tròn nửa lên xa 0), `interp` (nội suy ngoài bảng), `tier`/`counts`
+    theo quy mô S/M/L, `counts` cho phép ghi đè số gói/lớp/hệ thống, `kdp_max` phân biệt
+    XD/THUE/BCKTKT, `round_tmdt` làm tròn lên và chuyển sang làm tròn xuống khi vượt Kdp.
+  - Giá chuyên gia: `day_price` khớp công thức `luong × he_so_nang / ngay_thang`, `ks_month_price`
+    đổi theo vùng (Hđc).
+  - Chế độ THUE: có đủ `thue_pm` + `qtvh` + `dv_nam`; trọn gói thay thế nhóm J; dự phòng tối thiểu
+    theo số tiền; công thức `compute_thue_pm` = Gms × n/khấu_hao; `compute_tron_goi` khớp tay.
+  - QLDA tự thực hiện: tính lương + BH + chi khác, không có nhóm A.
+  - Nhóm bật/tắt: `nhom_tat`, `group_enabled` theo QLDA/co_pm_noi_bo/j_tron_goi, công tắc
+    `tham_tra_thiet_ke` tự động vs tay.
+  - Ghi đè nhóm: tổng ghi đè, chi phí khác Ck cộng vào nhóm, việc thêm nhiều nhóm, bậc không hợp
+    lệ fallback M3.
+  - Định mức văn bản: DM1688 đủ nhóm D/E, phân biệt BCKTKT và TMDT.
+  - Phí thẩm định/kiểm toán: `tb_factor` tự động theo tỷ trọng, tắt switch phí thẩm định, tắt
+    kiểm toán độc lập, hệ số kiểm toán độc lập khi bật.
+  - Phân bổ vốn: `default_alloc` cho chế độ THUE (dịch vụ chia đều, kiểm toán/thẩm tra cuối năm) và
+    XD (tv1 đầu năm, tham_tra cuối); `so_nam_phan_bo` theo chế độ; `start_year` từ `thoi_diem`;
+    tổng năm = TMĐT; tùy chọn phân bổ của người dùng.
+  - Cảnh báo: Kdp vượt tối đa, hệ số nâng > 1,5; số năm thuê > khấu hao; TMĐT không khả thi.
+  - So sánh văn bản: khi `dung_vb` thì `dang_dung` = "Văn bản".
+  - `merge_defaults` bổ sung khóa thiếu, giữ giá trị cũ.
+  - Xuất Excel chế độ THUE và chế độ QLDA tự thực hiện có sheet tương ứng.
+
+**Kiểm tra**
+- `python -m pytest -q` → 71 passed (29 cũ + 42 mới).
+
+**Việc còn treo:** không.
+
+---
+
+## 2026-10-15 – Lượt 29: Sắp xếp lại thứ tự sheet Excel xuất
+**Yêu cầu:** 01_THAM_SO, BANGLUONG_CG, Dongia_NgayCong đưa xuống cuối; TONG_HOP - XD đặt sau sheet phân bổ vốn.
+
+**Đã sửa**
+- `dutoan/excel_export.py`: sắp xếp sheet cuối `build_workbook`: BẢNG TMĐT, Bang Tong hop_Phan bo von, TONG_HOP - XD,
+  các sheet còn lại, rồi 01_THAM_SO, BANGLUONG_CG, Dongia_NgayCong. Sheet mở sẵn khi mở file là BẢNG TMĐT (trước là sheet thứ 2).
+- `tests/test_calc.py`: kiểm tra 3 sheet đầu và 3 sheet cuối.
+
+**Kiểm tra:** `python -m pytest` 29 passed; xuất thử đúng thứ tự mới. **Còn treo:** lượt 27–29 chưa commit/push (lượt 26 commit cục bộ, chưa push).
+
+---
+
+## 2026-10-15 – Lượt 28: Excel xuất bỏ sheet SO_SANH_VAN_BAN, dời sheet phân bổ vốn
+**Yêu cầu:** Bỏ sheet "SO_SANH_VAN_BAN"; chuyển "Bang Tong hop_Phan bo von" ra sau "BẢNG TMĐT".
+
+**Đã sửa**
+- `dutoan/excel_export.py`: không gọi `write_so_sanh` nữa (hàm giữ lại, không dùng); `move_sheet` đặt
+  "Bang Tong hop_Phan bo von" ngay sau "BẢNG TMĐT".
+- `tests/test_calc.py`: test xuất Excel kiểm tra không còn SO_SANH_VAN_BAN và thứ tự sheet mới.
+
+**Kiểm tra:** `python -m pytest` 29 passed; thứ tự sheet: 01_THAM_SO, BẢNG TMĐT, Bang Tong hop_Phan bo von, BANGLUONG_CG…
+**Còn treo:** lượt 27–28 chưa commit/push (lượt 26 đã commit cục bộ, chưa push).
+
+---
+
+## 2026-10-15 – Lượt 27: Excel xuất kẻ viền đủ mọi ô của bảng
+**Yêu cầu:** Các sheet có bảng tính phải kẻ all border, không để ô trống không viền nhìn lổm chổm.
+
+**Đã sửa**
+- `dutoan/excel_export.py`: thêm `border_tables(ws)`, chạy cho mọi sheet cuối `build_workbook`. Mỗi bảng (các dòng liền
+  nhau có ô đã kẻ viền) được kẻ viền đủ từng ô trong khung từ cột đầu đến cột cuối; tiêu đề và dòng trống ngoài bảng giữ nguyên.
+
+**Kiểm tra:** `python -m pytest` 29 passed; kiểm sheet nhóm Giám sát: không còn ô trống thiếu viền trong bảng.
+**Còn treo:** chưa mở Excel xem trực quan toàn bộ sheet; lượt 26–27 chưa commit/push (lượt 26 đã commit cục bộ, chưa push).
+
+---
+
 ## 2026-10-15 – Lượt 26: Không xuất sheet danh sách bước 2 nếu chưa nhập
 **Yêu cầu:** Nếu các mục 2a, 2b, 2c, 2e (và 2d thuê hằng năm) không nhập thì không xuất các sheet này ra Excel.
 

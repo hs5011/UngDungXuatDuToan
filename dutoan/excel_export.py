@@ -928,6 +928,26 @@ def _fill_cached(data, wb):
 
 
 # ====================================================================== điểm vào
+def border_tables(ws):
+    """Kẻ viền đủ mọi ô trong từng bảng: bảng = các dòng liền nhau có ô đã kẻ viền, cột từ ô viền đầu đến cuối."""
+    runs, cur = [], None
+    for row in ws.iter_rows():
+        cols = [c.column for c in row if c.border.left.style]
+        if cols:
+            if cur is None:
+                cur = [row[0].row, row[0].row, min(cols), max(cols)]
+                runs.append(cur)
+            else:
+                cur[1] = row[0].row
+                cur[2], cur[3] = min(cur[2], min(cols)), max(cur[3], max(cols))
+        else:
+            cur = None
+    for r1, r2, c1, c2 in runs:
+        for r in range(r1, r2 + 1):
+            for c in range(c1, c2 + 1):
+                ws.cell(r, c).border = BORDER
+
+
 def build_workbook(proj, res):
     ts = proj["tham_so"]
     bk = Book()
@@ -976,11 +996,22 @@ def build_workbook(proj, res):
     _, cells = write_summary(bk, proj, res, item_f, tables)
     write_tong_hop(bk, proj, res, cells)
     write_phan_bo(bk, proj, res, cells)
-    if res.compare:
-        write_so_sanh(bk, res)
+    # Không xuất sheet SO_SANH_VAN_BAN. Thứ tự: BẢNG TMĐT, phân bổ vốn, TONG_HOP, các sheet còn lại,
+    # cuối cùng là 3 sheet tham số/đơn giá.
+    wb = bk.wb
+    head = ["BẢNG TMĐT", "Bang Tong hop_Phan bo von", "TONG_HOP - XD"]
+    tail = ["01_THAM_SO", "BANGLUONG_CG", "Dongia_NgayCong"]
+    by = {w.title: w for w in wb.worksheets}
+    mid = [w for w in wb.worksheets if w.title not in head + tail]
+    wb._sheets = [by[n] for n in head if n in by] + mid + [by[n] for n in tail if n in by]
 
+    for ws in bk.wb.worksheets:
+        border_tables(ws)
     bk.wb.calculation = CalcProperties(fullCalcOnLoad=True, iterate=True, iterateCount=200, iterateDelta=0.5)
-    bk.wb.active = 1
+    for w in wb.worksheets:
+        w.sheet_view.tabSelected = False
+    wb.active = 0
+    wb.worksheets[0].sheet_view.tabSelected = True
     return bk.wb
 
 

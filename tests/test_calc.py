@@ -200,8 +200,10 @@ def test_xuat_excel_co_gia_tri_tinh_san_va_du_noi_dung(proj):
     data = export_bytes(proj, res)
     wf = openpyxl.load_workbook(io.BytesIO(data))
     wv = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
-    for name in ("GK_KHAC", "SO_SANH_VAN_BAN") if res.compare else ("GK_KHAC",):
-        assert name in wf.sheetnames
+    assert "GK_KHAC" in wf.sheetnames
+    assert "SO_SANH_VAN_BAN" not in wf.sheetnames
+    assert wf.sheetnames[:3] == ["BẢNG TMĐT", "Bang Tong hop_Phan bo von", "TONG_HOP - XD"]
+    assert wf.sheetnames[-3:] == ["01_THAM_SO", "BANGLUONG_CG", "Dongia_NgayCong"]
     # mọi ô công thức đều kèm giá trị tính sẵn
     for ws in wf.worksheets:
         for row in ws.iter_rows():
