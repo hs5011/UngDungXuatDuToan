@@ -328,7 +328,7 @@ def list_editor(key, cols, labels, money_cols=(), pct_cols=()):
                                       ("medium" if c in ("phuong_phap", "nguon", "ghi_chu") else None))
            for i, c in enumerate(cols)}
     for c in money_cols:
-        cfg[c] = st.column_config.NumberColumn(labels[cols.index(c)], min_value=0, step=1000, format="%.0f")
+        cfg[c] = st.column_config.NumberColumn(labels[cols.index(c)], min_value=0, step=1000, format="localized")
     for c in pct_cols:
         cfg[c] = st.column_config.NumberColumn(labels[cols.index(c)] + " (%)", min_value=0, max_value=100, step=1)
     df = editor(base, height=ed_height(len(base), True, ROW_STD), num_rows="dynamic", key=ed_key,
@@ -579,7 +579,7 @@ def step_thong_tin():
         with st.container(border=True):
             w("checkbox", "QTVH theo báo giá trọn gói (thay cho bóc tách nhóm J)", ("tham_so", "j_tron_goi"))
             if ts["j_tron_goi"]:
-                money("Nhân công QTVH trọn gói / năm (trước CPC, TNCT, VAT)", ("tham_so", "j_tron_goi_nam"))
+                money("Nhân công QTVH trọn gói / năm – trước CPC, TNCT, VAT (đồng)", ("tham_so", "j_tron_goi_nam"))
 
 
 # ================================================================== BƯỚC 2
@@ -1219,11 +1219,18 @@ def step_xuat():
         st.subheader("9a. Xuất Excel")
         with st.container(border=True):
             st.write(f"**{proj['thong_tin']['ten_du_an'] or '(chưa đặt tên)'}** – TMĐT **{vnd(res.tmdt)} đ**")
+            BLOCKERS = ("không có lời giải", "Dự phòng âm")
+            blocked = res.gms <= 0 or any(b in m for m in res.warnings for b in BLOCKERS)
             for m in res.warnings:
-                st.caption("⚠️ " + m)
+                if any(b in m for b in BLOCKERS):
+                    st.error("⛔ " + m)
+                else:
+                    st.caption("⚠️ " + m)
+            if res.gms <= 0:
+                st.error("⛔ Gms phải > 0 (quay lại bước 1 nhập Gms hoặc TMĐT hợp lệ).")
             st.download_button("⬇️ Tải file Excel", export_bytes(proj, res), file_name=f"Du_toan_{name}.xlsx",
                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", type="primary",
-                               width="stretch")
+                               width="stretch", disabled=blocked)
             st.caption("Gồm: 01_THAM_SO (toàn bộ tham số), BẢNG TMĐT (kèm ghi chú đã sửa), phân bổ vốn theo năm, "
                        "các sheet Cp_* tư vấn, đào tạo, triển khai, QTVH, kiểm thử TT 41, PM nội bộ, QLDA tự thực hiện, "
                        "danh mục thiết bị/PM/Gk nhập tay, đơn giá chuyên gia & kỹ sư, bảng NĐ 193/TT 28, so sánh văn bản (6b). "

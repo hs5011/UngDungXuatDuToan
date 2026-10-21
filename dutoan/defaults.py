@@ -146,8 +146,29 @@ def default_project():
     return copy.deepcopy(_default())
 
 
+NUMERIC_TS_KEYS = (
+    "gms", "tmdt", "kdp", "kdp_truot_gia", "du_phong_toi_thieu", "lam_tron",
+    "so_nam_thue", "so_nam_phan_bo", "khau_hao_nam", "vat", "he_so_nang",
+    "ngay_thang", "tn_tv", "exp", "nguong_M", "nguong_L", "pm_cpc", "pm_tn",
+    "luong_co_so", "ks_hpc", "pm_thue", "nd19_tl", "kt_min", "tt_min",
+    "he_so_tb", "he_so_kt_doc_lap", "ptd_giam_tt64", "tham_dinh_gia",
+    "bh_qlda", "ks_bh", "j_tron_goi_nam",
+)
+LIST_KEYS = ("thiet_bi", "pm_thuong_mai", "tb_khac", "dv_thue_nam", "gk_khac",
+             "qlda_nhan_su", "qlda_chi_khac", "nhom_tat")
+
+
+def _coerce_num(v):
+    if isinstance(v, str):
+        try:
+            return float(v.replace(" ", "").replace(",", "."))
+        except ValueError:
+            return v
+    return v
+
+
 def merge_defaults(data):
-    """Bổ sung khóa thiếu khi mở file JSON cũ."""
+    """Bổ sung khóa thiếu khi mở file JSON cũ; chuẩn hoá kiểu số & list."""
     base = default_project()
 
     def merge(dst, src):
@@ -160,4 +181,13 @@ def merge_defaults(data):
     merge(base, data or {})
     if data and "du_phong_theo" not in data.get("tham_so", {}):
         base["tham_so"]["du_phong_theo"] = "TIEN"  # file cũ chỉ có dự phòng tối thiểu theo số tiền
+    # Ép kiểu các khoá số (file cũ có thể lưu str)
+    ts = base["tham_so"]
+    for k in NUMERIC_TS_KEYS:
+        if k in ts:
+            ts[k] = _coerce_num(ts[k])
+    # Normalize list key = None → []
+    for k in LIST_KEYS:
+        if base.get(k) is None:
+            base[k] = []
     return base

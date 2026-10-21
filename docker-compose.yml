@@ -1,0 +1,11 @@
+services:
+  dutoan:
+    build: .
+    container_name: dutoan
+    restart: always
+    ports:
+      - "8501:8501"
+    volumes:
+      - dutoan_data:/app/workspace
+volumes:
+  dutoan_data:

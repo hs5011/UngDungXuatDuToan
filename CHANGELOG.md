@@ -5,6 +5,64 @@
 
 ---
 
+## 2026-10-21 – Lượt 31: Sửa 14 lỗi phát hiện qua review 4 agent
+**Yêu cầu:** sửa hết 14 lỗi (5 cao + 9 trung bình) các agent review báo cáo.
+
+**Đã sửa**
+- `dutoan/calc.py`:
+  - `round_tmdt`: clamp theo `base × (1+kdp_max)` khi phải làm tròn xuống, tránh floor_to vẫn vượt
+    Kdp khi `lam_tron` lớn hoặc có `kdp_truot_gia`.
+  - `_compute_at`: thêm cờ `converged`; nếu sau 200 vòng chưa hội tụ thì thêm warning.
+  - `compute_phan_bo`: kiểm thêm `abs(sum(pct)-1) > 1e-6` (ngoài `len != n`); nếu phải khôi phục
+    mặc định thì cộng warning cho người dùng biết.
+  - `nd214_ref` khlcnt: thêm `assert ctx["tv1_pre"] > 0` để chặn bug tiềm tàng khi tương lai có
+    nhóm nào đó khác B dùng `ref="nd214_khlcnt"` nhưng được tính trước B.
+  - `compute`: thêm cảnh báo khi `che_do="XD"` còn dữ liệu của chế độ THUE (dịch vụ thuê năm /
+    QTVH trọn gói) – tránh rò số liệu "ma" khi xuất JSON.
+- `dutoan/scaling.py`:
+  - `raw_total`: trả 0 khi `points` rỗng, mốc neo = 0, hoặc anchor có ngày = 0 (tránh
+    `math.log` crash).
+  - `total_days`: trả 0 (không phải 1) khi raw_total = 0, tránh task bị tính 1 ngày nếu caller
+    quên gọi `is_active`.
+  - `experts_for`: giới hạn tối đa `len(ladder)` (không trả 5 khi chỉ có M1–M4).
+- `dutoan/defaults.py`:
+  - `merge_defaults`: ép kiểu các khoá số (`gms`, `tmdt`, `kdp`, `kdp_truot_gia`,
+    `du_phong_toi_thieu`, `lam_tron`, `so_nam_thue`, `vat`, `he_so_nang`, …) từ string sang float
+    cho file JSON cũ.
+  - Normalize key list = `None` → `[]` (`thiet_bi`, `pm_thuong_mai`, `nhom_tat`, …).
+- `app.py`:
+  - Cột tiền `list_editor` đổi `format="%.0f"` → `format="localized"` (có dấu chấm phân cách
+    hàng nghìn, đúng CLAUDE.md).
+  - Label QTVH trọn gói: thêm "(đồng)".
+  - Nút tải Excel: `disabled` khi `res.gms <= 0` hoặc có warning chứa "không có lời giải" /
+    "Dự phòng âm"; warning nặng hiển thị `st.error` thay vì `st.caption` mờ.
+- `tests/test_full_coverage.py`: thêm 8 test cho các fix (round_tmdt kdp_truot_gia,
+  total_days(0)=0, raw_total mốc 0, experts_for ≤ 4, ép kiểu string → float, normalize list,
+  warning phân bổ sai tổng, warning XD còn dữ liệu THUE).
+
+**Kiểm tra**
+- `python -m pytest -q` → **79 passed** (71 cũ + 8 mới).
+
+**Việc còn treo:** không. Các lỗi "thấp" (10 lỗi nhỏ: solve_gms sau binary search, is_active
+anchors hiếm gặp, catalog `_a()` parse lỗi, storage id trùng cùng giây, date_field rỗng,
+excel J_TRON_GOI_NAM literal, PTD_HS literal, …) để dành lượt sau nếu cần.
+
+---
+
+## 2026-10-21 – Lượt 31: Bộ file triển khai server (Linux, Docker, Windows)
+**Yêu cầu:** làm file hướng dẫn build/deploy, kèm tuỳ chọn cài trên Windows.
+
+**Đã sửa**
+- `HUONG_DAN_TRIEN_KHAI.md`: viết lại mục C (Windows: script tự động, cài tay, cập nhật/sao lưu/gỡ, mật khẩu qua IIS hoặc giới hạn mạng nội bộ, cài offline); thêm bảng các file triển khai; bổ sung lệnh docker compose.
+- Mới: `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `deploy/dutoan.service`, `deploy/nginx-dutoan.conf`,
+  `deploy/cai_dat_linux.sh`, `deploy/cai_dat_windows.ps1`, `deploy/cap_nhat_windows.ps1`.
+- Không đổi mã tính toán nên không ảnh hưởng calc/excel_export.
+
+**Kiểm tra:** chưa chạy thử các script trên server thật (chỉ viết theo hướng dẫn đã có); chưa chạy pytest vì không đổi mã.
+**Còn treo:** chờ người dùng duyệt rồi commit + push; nên thử `cai_dat_windows.ps1` trên 1 máy Windows sạch.
+
+---
+
 ## 2026-10-21 – Lượt 30: Bổ sung test bao phủ toàn bộ chức năng
 **Yêu cầu:** sinh thêm test để kiểm tra logic các mục tính đã đúng chưa.
 

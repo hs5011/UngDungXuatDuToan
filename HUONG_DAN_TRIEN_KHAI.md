@@ -184,24 +184,62 @@ docker build -t dutoan .
 docker run -d --name dutoan --restart always -p 8501:8501 -v dutoan_data:/app/workspace dutoan
 ```
 
-Cập nhật: `git pull && docker build -t dutoan . && docker rm -f dutoan` rồi chạy lại lệnh `docker run`.
+Hoặc dùng compose: `docker compose up -d --build`. Cập nhật: `git pull && docker compose up -d --build` (hoặc `docker build` + `docker rm -f dutoan` + chạy lại `docker run`).
 Vẫn đặt Nginx phía trước như A.4/A.5.
 
 ---
 
-### C. Server Windows (máy chủ nội bộ)
+### C. Server Windows (Windows Server 2016+ / Windows 10, 11)
 
-1. Cài Python, làm theo mục 1.1–1.2 trên server (copy thư mục dự án hoặc `git clone`).
-2. Chạy bằng `chay_ung_dung.bat`; để mọi máy trong mạng truy cập, thêm `--server.address 0.0.0.0`:
-   ```powershell
-   python -X utf8 -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
-   ```
-3. Mở cổng tường lửa:
-   ```powershell
-   New-NetFirewallRule -DisplayName "Dutoan 8501" -Direction Inbound -Protocol TCP -LocalPort 8501 -Action Allow
-   ```
-4. Chạy nền tự khởi động: dùng **NSSM** (`nssm install Dutoan` → trỏ tới `python.exe`, tham số như trên, thư mục = thư mục dự án) hoặc Task Scheduler (trigger *At startup*).
-5. Người dùng truy cập `http://IP-server:8501`.
+#### C.1 Cài tự động bằng script (khuyến nghị)
+1. Cài Python 3.10+ (python.org, tích **Add python.exe to PATH**) và Git.
+2. Lấy mã nguồn: `git clone https://github.com/hs5011/UngDungXuatDuToan.git C:\dutoan` (hoặc copy thư mục dự án, bỏ `.venv`).
+3. Mở PowerShell **Run as Administrator**:
+```powershell
+cd C:\dutoan
+powershell -ExecutionPolicy Bypass -File deploy\cai_dat_windows.ps1
+```
+Script tự: tạo `.venv`, cài thư viện, mở cổng tường lửa 8501, đăng ký tác vụ **Dutoan** (Task Scheduler, chạy lúc khởi động máy, tự chạy lại nếu lỗi) và khởi động ngay.
+- Đổi cổng: `-Port 8502`. Dùng NSSM thay Task Scheduler: thêm `-DungNSSM` (cần cài `nssm` từ https://nssm.cc trước).
+4. Người dùng trong mạng vào `http://IP-server:8501`.
+
+#### C.2 Cài tay (nếu không dùng script)
+```powershell
+cd C:\dutoan
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -r requirements.txt
+New-NetFirewallRule -DisplayName "Dutoan 8501" -Direction Inbound -Protocol TCP -LocalPort 8501 -Action Allow
+.venv\Scripts\python.exe -X utf8 -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true
+```
+Chạy nền tự khởi động: `nssm install Dutoan` → *Path* = `C:\dutoan\.venv\Scripts\python.exe`, *Startup directory* = `C:\dutoan`, *Arguments* = `-X utf8 -m streamlit run app.py --server.address 0.0.0.0 --server.port 8501 --server.headless true`; hoặc Task Scheduler (trigger *At startup*, chạy với SYSTEM).
+
+#### C.3 Cập nhật, sao lưu, gỡ
+- Cập nhật: `powershell -ExecutionPolicy Bypass -File deploy\cap_nhat_windows.ps1`
+- Sao lưu: copy thư mục `C:\dutoan\workspace` (đặt Task Scheduler chạy hằng ngày).
+- Gỡ: `Unregister-ScheduledTask Dutoan -Confirm:$false` (hoặc `nssm remove Dutoan confirm`) và xoá luật tường lửa.
+
+#### C.4 Mật khẩu / HTTPS trên Windows
+Streamlit không có đăng nhập. Hai cách:
+- **Chỉ mở trong mạng nội bộ/VPN** (đơn giản nhất): giữ tường lửa chỉ cho dải IP nội bộ (`-RemoteAddress 192.168.0.0/16`).
+- **IIS + URL Rewrite + ARR** làm reverse proxy tới `http://127.0.0.1:8501` (bật *WebSocket Protocol* trong Windows Features), đặt Basic/Windows Authentication và chứng chỉ HTTPS ở IIS. Khi đó đổi script chạy thành `--server.address 127.0.0.1` và không mở cổng 8501 ra ngoài.
+
+#### C.5 Server không có Internet
+Trên máy có mạng: `pip download -r requirements.txt -d wheels` (cùng phiên bản Python/OS), copy thư mục `wheels` sang server, cài bằng `pip install --no-index --find-links wheels -r requirements.txt`.
+
+---
+
+## Các file triển khai có sẵn trong repo
+
+| File | Dùng cho |
+|---|---|
+| `deploy/cai_dat_linux.sh` | Cài trọn gói Ubuntu/Debian: `sudo bash deploy/cai_dat_linux.sh ten-mien.vn` |
+| `deploy/dutoan.service` | Service systemd (Linux) |
+| `deploy/nginx-dutoan.conf` | Nginx reverse proxy có WebSocket, sẵn dòng Basic Auth |
+| `Dockerfile`, `docker-compose.yml`, `.dockerignore` | Docker: `docker compose up -d --build` (có volume giữ dữ liệu) |
+| `deploy/cai_dat_windows.ps1` | Cài trọn gói Windows (Task Scheduler hoặc NSSM) |
+| `deploy/cap_nhat_windows.ps1` | Cập nhật bản mới trên Windows |
+
+Chọn nhanh: **Linux** → A (hoặc script `cai_dat_linux.sh`) · **đã có Docker** → B · **chỉ có Windows** → C.
 
 ---
 

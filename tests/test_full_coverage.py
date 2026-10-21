@@ -387,3 +387,63 @@ def test_xuat_excel_qlda_tu_thuc_hien(proj):
     wb = openpyxl.load_workbook(io.BytesIO(data))
     # Có sheet QLDA tự thực hiện (02/DT-QLDA)
     assert any("QLDA" in s or "02" in s for s in wb.sheetnames)
+
+
+# ================================ Fix bổ sung lượt 31 ===========================
+def test_round_tmdt_khong_vuot_cap_khi_kdp_truot_gia(proj):
+    """Khi kdp_truot_gia > 0, round_tmdt phải cap theo kdp_max."""
+    from dutoan.calc import round_tmdt
+    ts = proj["tham_so"]
+    ts["lam_tron"] = 10_000_000
+    base = 100_000_000
+    t = round_tmdt(base, 0.15, ts)  # rate > kdp_max 10%
+    assert t - base <= 0.10 * base + 1  # không vượt kdp_max
+
+
+def test_scaling_total_days_gms_0_tra_0():
+    from dutoan.scaling import total_days
+    ts = {"moc_neo": [1e9, 3e9, 10e9], "exp": 0.6}
+    anchors = ((1, 2), (1, 5), (2, 7))
+    assert total_days(anchors, 0, ts) == 0
+
+
+def test_scaling_moc_neo_0_khong_crash():
+    from dutoan.scaling import raw_total
+    pts = [(0, 1), (1e9, 2)]  # mốc neo đầu = 0, không hợp lệ
+    assert raw_total(pts, 5e8, 0.6) == 0.0
+
+
+def test_experts_for_khong_vuot_bac_thang():
+    from dutoan.scaling import experts_for, split
+    ladder = [12, 40, 90, 160]
+    assert experts_for(1000, ladder) == 4  # không trả 5
+    e, _ = split(1000, ladder)
+    assert e == 4
+
+
+def test_merge_defaults_ep_kieu_so_tu_string():
+    from dutoan.defaults import merge_defaults
+    p = merge_defaults({"tham_so": {"gms": "3000000000", "kdp": "0.08"}})
+    assert isinstance(p["tham_so"]["gms"], float) and p["tham_so"]["gms"] == 3e9
+    assert isinstance(p["tham_so"]["kdp"], float) and p["tham_so"]["kdp"] == 0.08
+
+
+def test_merge_defaults_normalize_list_none():
+    from dutoan.defaults import merge_defaults
+    p = merge_defaults({"nhom_tat": None, "thiet_bi": None})
+    assert p["nhom_tat"] == [] and p["thiet_bi"] == []
+
+
+def test_phan_bo_canh_bao_khi_tong_khong_bang_1(proj):
+    proj["tham_so"]["so_nam_phan_bo"] = 3
+    proj["phan_bo"] = {"thiet_bi": [0.5, 0.3, 0.0]}  # tổng 0.8
+    r = compute(proj)
+    assert any("Phân bổ vốn" in w for w in r.warnings)
+    tb = next(x for x in r.phan_bo["rows"] if x["key"] == "thiet_bi")
+    assert abs(sum(tb["ty_le"]) - 1) < 1e-6  # đã khôi phục mặc định
+
+
+def test_canh_bao_che_do_xd_co_du_lieu_thue(proj):
+    proj["dv_thue_nam"] = [{"ten": "cloud", "so_luong": 1, "don_gia": 1e6, "vat": 0.08}]
+    r = compute(proj)  # che_do mặc định XD
+    assert any("chế độ THUE" in w for w in r.warnings)

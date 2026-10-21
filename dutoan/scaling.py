@@ -23,16 +23,20 @@ def is_active(anchors, gms, ts):
 
 def raw_total(points, gms, exp):
     """Nội suy log-log giữa các mốc neo; ngoài khoảng neo co giãn theo hệ số exp."""
-    if gms <= 0:
+    if gms <= 0 or not points:
         return 0.0
     x0, t0 = points[0]
     xn, tn = points[-1]
+    if x0 <= 0 or xn <= 0:
+        return 0.0  # mốc neo không hợp lệ
     if gms <= x0:
-        return t0 * (gms / x0) ** exp
+        return t0 * (gms / x0) ** exp if t0 > 0 else 0.0
     if gms >= xn:
-        return tn * (gms / xn) ** exp
+        return tn * (gms / xn) ** exp if tn > 0 else 0.0
     for (xa, ta), (xb, tb) in zip(points, points[1:]):
         if xa <= gms <= xb:
+            if ta <= 0 or tb <= 0:
+                return max(ta, tb)
             k = math.log(gms / xa) / math.log(xb / xa)
             return ta * math.exp(math.log(tb / ta) * k)
     return tn  # không xảy ra
@@ -40,16 +44,17 @@ def raw_total(points, gms, exp):
 
 def total_days(anchors, gms, ts):
     pts = anchor_points(anchors, ts["moc_neo"])
-    return max(1, round_half_up(raw_total(pts, gms, ts["exp"])))
+    v = round_half_up(raw_total(pts, gms, ts["exp"]))
+    return max(1, v) if v > 0 else 0
 
 
 def experts_for(total, ladder):
     for i, b in enumerate(ladder):
         if total <= b:
             return i + 1
-    return len(ladder) + 1
+    return len(ladder)  # không vượt số bậc chuyên gia M1..Mn
 
 
 def split(total, ladder):
     e = experts_for(total, ladder)
-    return e, math.ceil(total / e)
+    return e, math.ceil(total / e) if e else 0

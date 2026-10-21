@@ -1,0 +1,15 @@
+[Unit]
+Description=Ung dung xuat du toan TT39
+After=network.target
+
+[Service]
+User=www-data
+WorkingDirectory=/opt/dutoan
+Environment=PYTHONUTF8=1
+ExecStart=/opt/dutoan/.venv/bin/python -m streamlit run app.py \
+  --server.port 8501 --server.address 127.0.0.1 --server.headless true \
+  --browser.gatherUsageStats false
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

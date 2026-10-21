@@ -34,11 +34,13 @@ def floor_to(x, unit):
 
 
 def round_tmdt(base, rate, ts):
-    """Làm tròn TMĐT lên; nếu làm dự phòng vượt Kdp tối đa thì làm tròn xuống."""
+    """Làm tròn TMĐT lên; nếu làm dự phòng vượt Kdp tối đa thì làm tròn xuống
+    và không được vượt base × (1 + Kdp_max) (tránh floor vẫn vượt khi lam_tron lớn)."""
     x = base * (1 + rate)
     t = ceil_to(x, ts["lam_tron"])
+    cap = base * (1 + kdp_max(ts))
     if t - base > kdp_max(ts) * base + 1e-6:
-        t = floor_to(x, ts["lam_tron"])
+        t = floor_to(min(x, cap), ts["lam_tron"])
     return t
 
 
@@ -265,6 +267,8 @@ def nd214_ref(key, ts, ctx):
     k = key.replace("nd214_", "")
     r, lo, hi = n[k]
     if k == "khlcnt":
+        # tv1_pre chỉ có sau khi nhóm B (tv1) được tính; nhóm dùng ref này phải tính SAU B.
+        assert ctx["tv1_pre"] > 0, "nd214_khlcnt yêu cầu nhóm B (tv1) phải được tính trước."
         pre = rnd(min(max(ctx["tv1_pre"] * r, lo), hi))
         note = f"NĐ 214: {r:.2%} × chi phí lập BCKT-KT (min {vnd(lo)}, max {vnd(hi)})"
     else:
@@ -574,13 +578,17 @@ def _compute_at(proj, gms, tmdt_fixed=None):
         kdp = ts["kdp"] if ts["kdp"] is not None else kdp_max(ts)
         rate = kdp + ts["kdp_truot_gia"]
         tmdt = round_tmdt(sum(i.post for i in res.items), rate, ts)
+        converged = False
         for _ in range(200):
             sec = _finish(res, proj, tmdt)
             base = sum(sec.values())
             new = round_tmdt(base, rate, ts)
             if abs(new - tmdt) < 0.5:
+                converged = True
                 break
             tmdt = new
+        if not converged:
+            res.warnings.append("TMĐT chưa hội tụ sau 200 vòng lặp — số liệu chỉ là gần đúng.")
     dp = tmdt - base
     res.tmdt = tmdt
     res.items.append(Item("du_phong", "V", "Chi phí dự phòng", "Gdp", dp, 0.0, DEFAULT_NOTES["du_phong"]))
@@ -657,12 +665,17 @@ def compute_phan_bo(res, proj):
     n = so_nam_phan_bo(ts)
     saved = proj.get("phan_bo", {})
     rows = []
+    reset_keys = []
     for it in res.items:
         pct = saved.get(it.key)
-        if not pct or len(pct) != n:
+        if not pct or len(pct) != n or abs(sum(pct) - 1) > 1e-6:
+            if pct:
+                reset_keys.append(it.key)
             pct = default_alloc(it.key, n, ts["che_do"])
         rows.append({"key": it.key, "nhom": it.sec, "noi_dung": it.label, "tong": it.post, "ty_le": list(pct),
                      "nam": [it.post * p for p in pct]})
+    if reset_keys:
+        res.warnings.append(f"Phân bổ vốn của {len(reset_keys)} dòng không hợp lệ (sai số năm hoặc tổng ≠ 100%) → đã khôi phục mặc định.")
     years = [sum(r["nam"][i] for r in rows) for i in range(n)]
     y0 = start_year(proj)
     return {"n": n, "rows": rows, "years": years, "labels": [f"Năm {y0 + i}" for i in range(n)]}
@@ -695,6 +708,9 @@ def compute(proj):
         warnings.append(f"Số năm thuê ({ts['so_nam_thue']}) vượt thời gian khấu hao tối đa {ts['khau_hao_nam']} năm (96 tháng).")
     if ts["he_so_nang"] > 1.5:
         warnings.append("Hệ số nâng lương chuyên gia vượt 1,5 lần (TT 07/2026/TT-BNV).")
+    # Rò dữ liệu "ma" khi đổi chế độ: XD vẫn giữ dữ liệu THUE hoặc ngược lại
+    if ts["che_do"] == "XD" and (proj.get("dv_thue_nam") or ts.get("j_tron_goi_nam") or ts.get("j_tron_goi")):
+        warnings.append("Chế độ XD nhưng còn dữ liệu của chế độ THUE (dịch vụ thuê năm / QTVH trọn gói) — không được tính vào kết quả, nên xoá.")
     # So sánh từng công việc có định mức theo văn bản (NĐ 214, NĐ 19) với số tính theo chuyên gia
     for code, g in res.groups.items():
         for r in g.rows:
