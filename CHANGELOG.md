@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-10-21 – Lượt 32: Test invariant kiểm tra lô-gic & nhất quán
+**Yêu cầu:** test thật kỹ các chức năng, xem có mâu thuẫn lô-gic không.
+
+**Đã sửa**
+- `tests/test_invariants.py` (mới): 47 test kiểm tra invariant & monotonic:
+  - **Cộng trừ nhất quán:** TMĐT = Σ item.post với 6 mức Gms (0.5–20 tỷ); totals pre/vat/base
+    khớp Σ item; totals[sec] khớp Σ item theo section.
+  - **Nhóm chuyên gia:** cg_pre = rnd(ccg+cql+ck+tn); cg_vat = rnd(vat × tổng);
+    ccg = Σ amount; TN = tn_rate × (ccg+cql+ck); Cql = ccg × cql_rate.
+  - **Dự phòng:** V ≥ 0 với mọi Gms hợp lệ; dp_ratio ≤ kdp_max; kdp + kdp_truot_gia > max vẫn
+    bị cap (kiểm chứng fix lượt 31).
+  - **Monotonic:** TMĐT tăng theo Gms; V tăng theo Kdp; thue_pm tăng theo số năm thuê;
+    counts tăng theo tier.
+  - **Python ↔ Excel khớp:** TMĐT đọc lại từ file xuất khớp Python ở 3 mức Gms.
+  - **Ghi đè & bỏ việc:** ghi đè số CG không làm lệch tổng ngày; bỏ việc làm giảm ccg đúng
+    bằng amount việc đó; ghi đè nhóm B không ảnh hưởng nhóm C.
+  - **Phân bổ vốn:** tổng theo năm = TMĐT với n = 1..5; từng dòng tổng theo năm = tong, tỷ lệ sum=1.
+  - **Chế độ:** THUE có 'thue_pm' không có 'pm'; XD không có 'dv_nam'/'thue_pm'/'qtvh'.
+  - **Loại hồ sơ:** BCKTKT ≤ 5%, DU_TOAN ≤ 7%, TMDT ≤ 10%.
+  - **Idempotent:** gọi compute 2 lần cho cùng input ra cùng kết quả.
+  - **Chế độ TMĐT:** nhập TMĐT tìm được Gms > 0.
+
+**Kiểm tra**
+- `python -m pytest -q` → **126 passed** (29 cũ + 42 lượt 30 + 8 lượt 31 + 47 invariants).
+
+**Kết luận:** không phát hiện mâu thuẫn lô-gic. Mọi mối quan hệ cộng–trừ, giới hạn, monotonic,
+Python↔Excel đều nhất quán.
+
+**Việc còn treo:** không.
+
+---
+
 ## 2026-10-21 – Lượt 31: Sửa 14 lỗi phát hiện qua review 4 agent
 **Yêu cầu:** sửa hết 14 lỗi (5 cao + 9 trung bình) các agent review báo cáo.
 
