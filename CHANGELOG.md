@@ -5,6 +5,39 @@
 
 ---
 
+## 2026-10-21 – Lượt 34: Cảnh báo đỏ khi TMĐT nhập nhỏ hơn chi phí tối thiểu
+**Yêu cầu:** nhập TMĐT quá nhỏ thì dự phòng âm; hiện dòng đỏ báo rõ thay vì để số âm khó hiểu (giữ nguyên số âm, không ép về 0).
+
+**Đã sửa**
+- `app.py` (bước 1b, chế độ nhập TMĐT): khi dự phòng < 0, hiện `st.error` dưới thẻ Gms:
+  "TMĐT nhỏ hơn chi phí tối thiểu X đ (kể cả khi Gms = 0). Hãy kiểm tra lại số tiền, đã gõ đủ số 0 chưa?".
+- `dutoan/calc.py`: cảnh báo "không có lời giải" kèm số chi phí tối thiểu.
+- `tests/test_full_coverage.py`: test kiểm tra cảnh báo chứa số chi phí tối thiểu, Gms = 0, dự phòng < 0.
+
+**Kiểm tra**
+- `python -m pytest -q` → 137 passed.
+- Chạy giao diện (dự án tạm, đã xóa): TMĐT 500.000 hiện dòng đỏ "… tối thiểu 5.674.885 đ …" và chữ "Năm trăm nghìn đồng".
+
+**Việc còn treo:** chưa commit (gộp lượt 33 và 34).
+
+---
+
+## 2026-10-21 – Lượt 33: Hiện số tiền bằng chữ dưới mọi ô tiền
+**Yêu cầu:** dưới ô TMĐT (và các ô tiền) hiện số thành chữ, ví dụ "năm trăm nghìn đồng", để tránh gõ nhầm số 0.
+
+**Đã sửa**
+- `dutoan/calc.py`: thêm `doc_so()` / `vnd_chu()` đọc số tiền tiếng Việt (tỷ, triệu, nghìn; "lẻ", "mốt", "tư", "lăm", "mười"); chữ cái đầu viết hoa.
+- `app.py`: `money_input()` hiện `st.caption(vnd_chu(v))` ngay dưới ô khi giá trị > 0; áp dụng cho mọi ô dùng `money()`.
+- `tests/test_full_coverage.py`: 11 test đọc số (500.000, 5.674.885, 1.000.005, 15.000, 21.000, 105 triệu, 1.200 tỷ…).
+
+**Kiểm tra**
+- `python -m pytest -q` → 137 passed.
+- Chạy giao diện, mở dự án NTS: ô TMĐT 20.000.000.000 hiện "hai mươi tỷ đồng", ô Làm tròn 1.000.000 hiện "một triệu đồng".
+
+**Việc còn treo:** chưa commit.
+
+---
+
 ## 2026-10-21 – Lượt 32: Test invariant kiểm tra lô-gic & nhất quán
 **Yêu cầu:** test thật kỹ các chức năng, xem có mâu thuẫn lô-gic không.
 

@@ -23,6 +23,48 @@ def vnd(x):
     return f"{x:,.0f}".replace(",", ".")
 
 
+_CHU_SO = ["không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín"]
+
+
+def _doc_3(n, day_du):
+    """Đọc 0..999; day_du=True khi phía trước đã có nhóm lớn hơn (phải đọc 'không trăm', 'lẻ')."""
+    tram, chuc, dv = n // 100, n // 10 % 10, n % 10
+    out = []
+    if tram or day_du:
+        out.append(f"{_CHU_SO[tram]} trăm")
+    if chuc == 0:
+        if dv:
+            out.append(("lẻ " if (tram or day_du) else "") + _CHU_SO[dv])
+    elif chuc == 1:
+        out.append("mười" + (" " + ("lăm" if dv == 5 else _CHU_SO[dv]) if dv else ""))
+    else:
+        dv_chu = {1: "mốt", 4: "tư", 5: "lăm"}.get(dv, _CHU_SO[dv] if dv else "")
+        out.append(f"{_CHU_SO[chuc]} mươi" + (f" {dv_chu}" if dv else ""))
+    return " ".join(out)
+
+
+def doc_so(n):
+    n = int(round(n))
+    if n == 0:
+        return "không"
+    ty, r = divmod(n, 10 ** 9)
+    out = [doc_so(ty) + " tỷ"] if ty else []
+    started = bool(ty)
+    tr, r2 = divmod(r, 10 ** 6)
+    ng, dv = divmod(r2, 1000)
+    for val, unit in ((tr, "triệu"), (ng, "nghìn"), (dv, "")):
+        if val:
+            out.append(_doc_3(val, started) + (f" {unit}" if unit else ""))
+            started = True
+    return " ".join(out)
+
+
+def vnd_chu(x):
+    """Số tiền → chữ, ví dụ 500000 → 'Năm trăm nghìn đồng'."""
+    s = f"{doc_so(x)} đồng"
+    return s[0].upper() + s[1:]
+
+
 def ceil_to(x, unit):
     unit = unit if unit and unit > 0 else 1
     return math.ceil(x / unit - 1e-9) * unit
@@ -689,7 +731,8 @@ def compute(proj):
         gms, feasible = solve_gms(proj)
         res = _compute_at(proj, gms, ts["tmdt"])
         if not feasible:
-            warnings.append("TMĐT nhập vào nhỏ hơn tổng các chi phí khác ngay cả khi Gms = 0 → không có lời giải.")
+            warnings.append(f"TMĐT nhập vào nhỏ hơn tổng các chi phí khác ({vnd(res.totals['base'])} đ) "
+                            "ngay cả khi Gms = 0 → không có lời giải.")
     else:
         res = _compute_at(proj, ts["gms"])
 

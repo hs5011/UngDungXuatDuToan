@@ -351,6 +351,9 @@ def test_canh_bao_tmdt_khong_kha_thi(proj):
     ts["nhap"], ts["tmdt"], ts["du_phong_theo"], ts["du_phong_toi_thieu"] = "TMDT", 1_000_000, "TIEN", 0
     r = compute(proj)
     assert any("không có lời giải" in w for w in r.warnings)
+    from dutoan.calc import vnd
+    assert any(vnd(r.totals["base"]) in w for w in r.warnings)
+    assert r.gms == 0 and r.totals["V"] < 0
 
 
 # ================================ So sánh văn bản ===============================
@@ -387,6 +390,24 @@ def test_xuat_excel_qlda_tu_thuc_hien(proj):
     wb = openpyxl.load_workbook(io.BytesIO(data))
     # Có sheet QLDA tự thực hiện (02/DT-QLDA)
     assert any("QLDA" in s or "02" in s for s in wb.sheetnames)
+
+
+@pytest.mark.parametrize("so, chu", [
+    (500_000, "Năm trăm nghìn đồng"),
+    (500_000_000, "Năm trăm triệu đồng"),
+    (1_000_000, "Một triệu đồng"),
+    (5_674_885, "Năm triệu sáu trăm bảy mươi tư nghìn tám trăm tám mươi lăm đồng"),
+    (3_000_000_000, "Ba tỷ đồng"),
+    (1_000_005, "Một triệu không trăm lẻ năm đồng"),
+    (15_000, "Mười lăm nghìn đồng"),
+    (21_000, "Hai mươi mốt nghìn đồng"),
+    (105_000_000, "Một trăm lẻ năm triệu đồng"),
+    (8_530_000_000, "Tám tỷ năm trăm ba mươi triệu đồng"),
+    (1_200_000_000_000, "Một nghìn hai trăm tỷ đồng"),
+])
+def test_doc_so_thanh_chu(so, chu):
+    from dutoan.calc import vnd_chu
+    assert vnd_chu(so) == chu
 
 
 # ================================ Fix bổ sung lượt 31 ===========================

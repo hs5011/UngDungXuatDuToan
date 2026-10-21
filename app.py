@@ -12,7 +12,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from dutoan.calc import compute, kdp_max, ks_month_price, day_price, vnd, sec_name, sec_kh, SEC_NOTES
+from dutoan.calc import compute, kdp_max, ks_month_price, day_price, vnd, vnd_chu, sec_name, sec_kh, SEC_NOTES
 from dutoan.catalog import GROUP_BY_CODE, PM_ROLES, TASK_BY_ID
 from dutoan import storage
 from dutoan.defaults import GRADES, GRADE_NOTE, LOAI_HO_SO
@@ -185,6 +185,8 @@ def money_input(label, key, init, allow_empty=False, **kw):
         ss[key] = vnd(init) if init is not None else ""
     st.text_input(label, key=key, on_change=_fmt_money_cb, args=(key,), placeholder=kw.pop("placeholder", "0"), **kw)
     v = parse_money(ss[key])
+    if v:
+        st.caption(vnd_chu(v))
     return v if (v is not None or allow_empty) else 0.0
 
 
@@ -529,6 +531,9 @@ def step_thong_tin():
                 kpi_cards([{"label": "→ Giá trị phần mềm Gms tương ứng", "value": res.gms, "main": True,
                             "sub": f"Gms lớn nhất để dự phòng nhỏ nhất · dự phòng {vnd(res.totals['V'])} đ "
                                    + f"({res.totals['dp_ratio']:.2%})".replace(".", ",")}])
+                if res.totals["V"] < 0:
+                    st.error(f"TMĐT nhỏ hơn chi phí tối thiểu {vnd(res.totals['base'])} đ (kể cả khi Gms = 0). "
+                             "Hãy kiểm tra lại số tiền, đã gõ đủ số 0 chưa?")
                 w("radio", "Dự phòng tối thiểu theo", ("tham_so", "du_phong_theo"), options=["PCT", "TIEN"],
                   format_func={"PCT": "Tỷ lệ Kdp (%)", "TIEN": "Số tiền (đồng)"}.get, horizontal=True)
             kmax = kdp_max(ts)
