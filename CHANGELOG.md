@@ -5,6 +5,21 @@
 
 ---
 
+## 2026-10-22 – Lượt 36: Bố cục lại mục 1c cho thoáng, dễ hiểu
+**Yêu cầu:** mục 1c (Hệ số & công tắc) các ô dính nhau, khó phân biệt; ô "Chi phí thẩm định giá" nằm dưới nhãn "Thuế" gây hiểu nhầm.
+
+**Đã sửa**
+- `app.py` (bước 1c): tách thành 3 thẻ có viền, tiêu đề riêng: **Thuế & chi phí khác** (thuế GTGT, ghi chú lương, đường kẻ, rồi ô Chi phí
+  thẩm định giá kèm giải thích), **Công tắc tính toán** (2 ô chọn, đường kẻ, 3 ô tick), **Quy mô dự án** (giải thích ngắn,
+  3 ô số; ô trống hiện "Tự động: N", dấu ? ghi mặc định 2/3/5, 1/3/6, 0/2/5).
+- Không đổi công thức/khoá lưu nên không sửa `calc.py`, `excel_export.py`.
+
+**Kiểm tra:** `python -m pytest -q` → 137 passed; mở giao diện thấy 3 thẻ tách rõ, không lỗi.
+
+**Việc còn treo:** chưa commit, chờ người dùng duyệt.
+
+---
+
 ## 2026-10-22 – Lượt 35: Làm rõ "số gói thầu / lớp / hệ thống / năm" ở bước 1c và bước 3
 **Yêu cầu:** caption bước 3a hiện "3 năm" dù chế độ XD (giá trị mặc định ẩn của `so_nam_thue`); cột "Hệ số" chỉ có
 con số, 3 thông số quy mô khó hiểu. Làm rõ cách hiển thị (không đổi công thức).

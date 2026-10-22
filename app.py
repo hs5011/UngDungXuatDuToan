@@ -557,29 +557,38 @@ def step_thong_tin():
                 w("number_input", "Số năm phân bổ vốn", ("tham_so", "so_nam_phan_bo"), min_value=1, max_value=10, step=1)
 
     st.subheader("1c. Hệ số & công tắc")
-    with st.container(border=True):
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown("**Thuế**")
+    c1, c2, c3 = st.columns(3, gap="medium")
+    with c1:
+        with st.container(border=True):
+            st.markdown("##### Thuế & chi phí khác")
             pct("Thuế GTGT (%)", ("tham_so", "vat"))
             st.caption("Lương cơ sở, hệ số lương, lương chuyên gia: bước 8 → 8a.")
+            st.divider()
             money("Chi phí thẩm định giá (đồng)", ("tham_so", "tham_dinh_gia"))
-        with c2:
-            st.markdown("**Công tắc**")
+            st.caption("Khoản chi phí khác, nhập tay theo báo giá (vd. thẩm định giá thiết bị). "
+                       "Không có thì để 0; có thì cộng vào TMĐT và cơ sở tính kiểm toán, thẩm tra.")
+    with c2:
+        with st.container(border=True):
+            st.markdown("##### Công tắc tính toán")
             tri("Thẩm tra thiết kế", ("tham_so", "tham_tra_thiet_ke"),
                 f"Tự động ({'tắt – nhà thầu lập thiết kế' if ts['co_pm_noi_bo'] else 'bật'})")
             tri("Thiết bị ≥ 50% giá trị (kiểm toán × 70%)", ("tham_so", "tb_tren_50"), "Tự động theo tỷ trọng")
+            st.divider()
             w("checkbox", "Có kiểm toán độc lập (thẩm tra QT × 50%)", ("tham_so", "kiem_toan_doc_lap"))
             w("checkbox", "Tính lệ phí thẩm định dự án", ("tham_so", "phi_tham_dinh"))
             w("checkbox", "Có thẩm tra (lệ phí thẩm định × 50%)", ("tham_so", "ptd_co_tham_tra"))
-        with c3:
-            st.markdown(f"**Quy mô** – để trống = tự động theo Gms (hiện: {res.counts['goi']} gói, "
-                        f"{res.counts['lop']} lớp, {res.counts['he_thong']} hệ thống)")
-            st.caption("Là số lần lặp của việc: mỗi gói thầu lập/thẩm định HSMT riêng (nhóm E, F), mỗi lớp dạy riêng "
-                       "(nhóm G), mỗi hệ thống tích hợp riêng (nhóm H). Việc khác làm 1 lần, không nhân.")
-            w("number_input", "Số gói thầu (mặc định 2/3/5)", ("tham_so", "so_goi"), min_value=1, step=1, placeholder="Tự động")
-            w("number_input", "Số lớp đào tạo (1/3/6)", ("tham_so", "so_lop"), min_value=0, step=1, placeholder="Tự động")
-            w("number_input", "Số hệ thống tích hợp (0/2/5)", ("tham_so", "so_he_thong"), min_value=0, step=1, placeholder="Tự động")
+    with c3:
+        with st.container(border=True):
+            st.markdown("##### Quy mô dự án")
+            st.caption("Số lần lặp của việc: mỗi gói thầu lập/thẩm định HSMT riêng (nhóm E, F), mỗi lớp dạy riêng "
+                       "(nhóm G), mỗi hệ thống tích hợp riêng (nhóm H). Việc khác làm 1 lần, không nhân. "
+                       "**Để trống = tự động theo Gms.**")
+            w("number_input", "Số gói thầu", ("tham_so", "so_goi"), min_value=1, step=1,
+              placeholder=f"Tự động: {res.counts['goi']}", help="Mặc định theo quy mô: 2 / 3 / 5 (nhỏ / vừa / lớn).")
+            w("number_input", "Số lớp đào tạo", ("tham_so", "so_lop"), min_value=0, step=1,
+              placeholder=f"Tự động: {res.counts['lop']}", help="Mặc định theo quy mô: 1 / 3 / 6 (nhỏ / vừa / lớn).")
+            w("number_input", "Số hệ thống tích hợp", ("tham_so", "so_he_thong"), min_value=0, step=1,
+              placeholder=f"Tự động: {res.counts['he_thong']}", help="Mặc định theo quy mô: 0 / 2 / 5 (nhỏ / vừa / lớn).")
 
     if ts["che_do"] == "THUE":
         st.subheader("1d. Quản trị, vận hành (chế độ thuê)")
