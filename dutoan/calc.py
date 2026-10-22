@@ -8,7 +8,7 @@ import math
 from dataclasses import dataclass, field
 
 from . import scaling
-from .catalog import GROUP_BY_CODE, PM_ROLES, MULT_LABEL, DM1688, DM1688_X
+from .catalog import GROUP_BY_CODE, PM_ROLES, MULT_LABEL, MULT_DEFAULT, DM1688, DM1688_X
 from .defaults import KDP_MAX, KDP_MAX_THUE
 
 
@@ -110,15 +110,17 @@ def tier(gms, ts):
     return 0
 
 
-DEFAULT_COUNTS = {"goi": (2, 3, 5), "lop": (1, 3, 6), "he_thong": (0, 2, 5)}
-COUNT_KEY = {"goi": "so_goi", "lop": "so_lop", "he_thong": "so_he_thong"}
+DEFAULT_COUNTS = {"goi": (2, 3, 5)}
+COUNT_KEY = {"goi": "so_goi"}
 
 
 def counts(gms, ts):
+    """Số gói thầu theo quy mô (hoặc nhập tay ở bước 1); số năm thuê; các số lượng khác mặc định, sửa ở cột Hệ số bước 3."""
     t = tier(gms, ts)
     out = {k: (ts[COUNT_KEY[k]] if ts[COUNT_KEY[k]] is not None else v[t]) for k, v in DEFAULT_COUNTS.items()}
     out["nam"] = ts["so_nam_thue"]
     out[""] = 1
+    out.update(MULT_DEFAULT)
     return out
 
 
@@ -196,6 +198,7 @@ class Row:
     use_ref: bool = False
     excluded: bool = False
     overridden: bool = False
+    auto_mult: float = 1.0
 
 
 @dataclass
@@ -345,11 +348,13 @@ def compute_group(code, gms, proj, ctx):
             d = ad
         grade = ov.get("bac") or t.grade
         name = ov.get("ten") or ("Thiết kế cơ sở" if (t.id == "B4" and ts["thiet_ke"] == 2) else t.name)
-        mult = ctx["counts"][t.mult]
+        auto_mult = ctx["counts"][t.mult]
+        mult = float(ov["he_so"]) if ov.get("he_so") is not None else auto_mult
         price = day_price(grade, ts)
         row = Row(t.id, name, grade, price, ae, ad, e, d, mult, MULT_LABEL[t.mult], t.mult, 0.0, ref=t.ref,
                   use_ref=bool(ov.get("dung_vb")) and t.ref != "", excluded=bool(ov.get("bo")),
-                  overridden=any(ov.get(k) for k in ("so_cg", "so_ngay", "bac", "dung_vb", "bo", "ten")))
+                  overridden=any(ov.get(k) for k in ("so_cg", "so_ngay", "bac", "dung_vb", "bo", "ten")) or ov.get("he_so") is not None,
+                  auto_mult=auto_mult)
         if t.ref.startswith("nd214"):
             row.ref_pre, row.ref_note = nd214_ref(t.ref, ts, ctx)
         row.amount = 0.0 if (row.excluded or row.use_ref) else price * e * d * mult

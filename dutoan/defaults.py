@@ -62,8 +62,6 @@ def _default():
             "nguong_M": 1_000_000_000.0,
             "nguong_L": 5_000_000_000.0,
             "so_goi": None,  # None → theo quy mô 2/3/5
-            "so_lop": None,  # 1/3/6
-            "so_he_thong": None,  # 0/2/5
             # PM nội bộ (nhóm K)
             "pm_cpc": 0.55,
             "pm_tn": 0.06,

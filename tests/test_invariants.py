@@ -149,7 +149,7 @@ def test_counts_tang_theo_tier(proj):
     c0 = counts(0.5e9, ts)
     c1 = counts(2e9, ts)
     c2 = counts(10e9, ts)
-    for k in ("goi", "lop", "he_thong"):
+    for k in ("goi",):
         assert c0[k] <= c1[k] <= c2[k]
 
 
@@ -309,3 +309,57 @@ def test_che_do_thue_tmdt_mode_tim_duoc_gms(proj):
     r = compute(proj)
     assert r.gms > 0
     assert r.tmdt == 5e9
+
+
+# ============================= Hệ số nhập tay ở bước 3 (nhóm G, H) =============================
+def _row(proj, code, rid):
+    return next(x for x in compute(proj).groups[code].rows if x.id == rid)
+
+
+def test_he_so_mac_dinh_nhom_g_h(proj):
+    """Số máy chủ, số nhóm khai thác/quản trị, số hệ thống mặc định 1; máy trạm mặc định 0."""
+    proj["tham_so"]["gms"] = 3e9
+    for code, rid, hs in [("H", "H3", 1), ("H", "H5", 1), ("H", "H6", 1), ("H", "H4", 0),
+                          ("G", "G5", 1), ("G", "G6", 1), ("G", "G8", 0)]:
+        r = _row(proj, code, rid)
+        assert r.mult == hs and r.auto_mult == hs, rid
+    assert _row(proj, "H", "H4").amount == 0
+
+
+def test_he_so_ghi_de_nhan_dung_tien(proj):
+    """Sửa hệ số 1 → 21 máy chủ: tiền dòng nhân đúng 21 lần, các dòng khác không đổi."""
+    proj["tham_so"]["gms"] = 3e9
+    r0 = _row(proj, "H", "H3")
+    ccg0 = compute(proj).groups["H"].ccg
+    proj["ghi_de"] = {"H3": {"he_so": 21.0}}
+    r1 = _row(proj, "H", "H3")
+    assert r1.mult == 21 and r1.overridden
+    assert r1.amount == pytest.approx(r0.amount * 21)
+    assert compute(proj).groups["H"].ccg == pytest.approx(ccg0 + r0.amount * 20)
+
+
+def test_he_so_bang_0_la_khong_tinh(proj):
+    proj["tham_so"]["gms"] = 3e9
+    proj["ghi_de"] = {"G5": {"he_so": 0.0}}
+    r = _row(proj, "G", "G5")
+    assert r.mult == 0 and r.amount == 0
+
+
+def test_he_so_ghi_de_viec_nhom_e_khong_doi_so_goi(proj):
+    """Hệ số dòng E2 sửa tay chỉ đổi dòng đó; số gói thầu (tham số) vẫn là số mặc định."""
+    proj["tham_so"]["gms"] = 3e9
+    goi = counts(3e9, proj["tham_so"])["goi"]
+    proj["ghi_de"] = {"E2": {"he_so": 7.0}}
+    r = _row(proj, "E", "E2")
+    assert r.mult == 7 and r.auto_mult == goi
+
+
+def test_excel_khop_python_khi_sua_he_so(proj):
+    proj["tham_so"]["gms"] = 3e9
+    proj["ghi_de"] = {"H3": {"he_so": 4.0}, "H4": {"he_so": 3.0}, "G5": {"he_so": 7.0}, "G6": {"he_so": 2.0},
+                      "E2": {"he_so": 5.0}}
+    r = compute(proj)
+    wv = openpyxl.load_workbook(io.BytesIO(export_bytes(proj, r)), data_only=True)
+    ws = wv["BẢNG TMĐT"]
+    tot_row = next(x for x in range(1, ws.max_row + 1) if ws[f"B{x}"].value == "TỔNG CỘNG")
+    assert abs(ws[f"H{tot_row}"].value - r.tmdt) < 1

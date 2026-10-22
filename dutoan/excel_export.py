@@ -21,7 +21,7 @@ from openpyxl.workbook.properties import CalcProperties
 
 from .calc import (SEC_NOTES, sec_kh, sec_name, kdp_max, ks_month_price, ks_avg_month, day_price, line_pre,
                    tham_tra_tk_on)
-from .catalog import GROUP_BY_CODE, DM1688, DM1688_X
+from .catalog import GROUP_BY_CODE, DM1688, DM1688_X, MULT_DEFAULT
 from .defaults import GRADES, GRADE_NOTE, LOAI_HO_SO
 
 NUM = "#,##0"
@@ -205,8 +205,6 @@ def write_params(bk, proj, res):
 
     section("5. Quy mô")
     row("Số gói thầu", res.counts["goi"], "SO_GOI")
-    row("Số lớp đào tạo", res.counts["lop"], "SO_LOP")
-    row("Số hệ thống tích hợp", res.counts["he_thong"], "SO_HT")
     row("Hệ số co giãn EXP", ts["exp"], None, "0.00", "Mô hình co giãn ngày công theo quy mô Gms.")
     row("Ngưỡng ngày công → 1/2/3/4 chuyên gia", " / ".join(str(x) for x in ts["bac_thang"]))
     row("Mốc neo S / M / L (Gms, đồng)", " / ".join(f"{x:,.0f}".replace(",", ".") for x in ts["moc_neo"]))
@@ -395,7 +393,7 @@ def write_group(bk, proj, res, g):
     service = cat.section in ("TB", "DV")
     title(ws, "BẢNG TÍNH CHI PHÍ" + ("" if service else " TƯ VẤN"), f"Công việc: {g.name}")
     widths(ws, [6, 46, 7, 10, 10, 10, 14, 16, 16, 16, 8, 50])
-    header(ws, 4, ["STT", "CHI PHÍ", "BẬC", "SỐ LƯỢNG CHUYÊN GIA", "SỐ NGÀY THỰC HIỆN", "HỆ SỐ (gói/lớp/HT/năm)",
+    header(ws, 4, ["STT", "CHI PHÍ", "BẬC", "SỐ LƯỢNG CHUYÊN GIA", "SỐ NGÀY THỰC HIỆN", "HỆ SỐ (số lần lặp)",
                    "ĐƠN GIÁ NGÀY CÔNG", "THÀNH TIỀN", "THEO VĂN BẢN (trước thuế)", "THEO VĂN BẢN (sau thuế)",
                    "DÙNG VB (x)", "GHI CHÚ"])
     put(ws, "A5", "I", bold=True, fill=SEC_FILL)
@@ -405,7 +403,7 @@ def write_group(bk, proj, res, g):
     first = 6
     last = first + max(len(rows), 1) - 1
     ccg = f"H5"
-    mult_name = {"": None, "goi": "SO_GOI", "lop": "SO_LOP", "he_thong": "SO_HT", "nam": "SO_NAM"}
+    mult_name = {"": None, "goi": "SO_GOI", "nam": "SO_NAM"}
     pending_nd19 = []
     for i, row in enumerate(rows):
         r = first + i
@@ -414,8 +412,9 @@ def write_group(bk, proj, res, g):
         put(ws, f"C{r}", row.grade, fill=INPUT_FILL)
         put(ws, f"D{r}", row.experts, fill=INPUT_FILL)
         put(ws, f"E{r}", row.days, fill=INPUT_FILL)
-        mn = mult_name.get(row.mult_kind)
-        put(ws, f"F{r}", f"={mn}" if mn else row.mult, "#,##0.##", fill=INPUT_FILL if row.mult_kind == "tuy_chon" else None,
+        mn = mult_name.get(row.mult_kind) if row.mult == row.auto_mult else None  # đã sửa tay ở bước 3 thì ghi số
+        put(ws, f"F{r}", f"={mn}" if mn else row.mult, "#,##0.##",
+            fill=INPUT_FILL if (mn is None and (row.mult_kind in ("tuy_chon", *MULT_DEFAULT) or row.mult != row.auto_mult)) else None,
             cv=row.mult)
         put(ws, f"G{r}", f"=INDIRECT(\"DG_\"&C{r})", NUM, cv=row.price)
         put(ws, f"H{r}", f"=IF(LOWER(K{r})=\"x\",0,D{r}*E{r}*F{r}*G{r})", NUM, cv=row.amount)
@@ -432,7 +431,8 @@ def write_group(bk, proj, res, g):
             put(ws, f"J{r}", f"=ROUND(I{r}*(1+VAT),0)", NUM, cv=row.ref_value)
         put(ws, f"K{r}", "x" if row.use_ref else None, fill=INPUT_FILL if row.ref else None, align=CENTER)
         note = ("Công việc bổ sung (nhập tay)" if row.mult_kind == "tuy_chon" else
-                f"Tự động: {row.auto_experts} CG × {row.auto_days} ngày" + (" – ĐÃ GHI ĐÈ" if row.overridden else ""))
+                f"Tự động: {row.auto_experts} CG × {row.auto_days} ngày" + (" – ĐÃ GHI ĐÈ" if row.overridden else "")
+                + (f". Hệ số = {row.mult_label}" if row.mult_label else ""))
         if row.ref_note:
             note += f". {row.ref_note}"
         put(ws, f"L{r}", note, align=WRAP)

@@ -525,7 +525,8 @@ def step_thong_tin():
             if ts["nhap"] == "GMS":
                 money("Giá trị phần mềm Gms (đồng) *", ("tham_so", "gms"))
                 kpi_cards([{"label": "→ Tổng mức đầu tư tính ra", "value": res.tmdt, "main": True,
-                            "sub": f"Gms + các chi phí khác + dự phòng {res.totals['dp_ratio']:.2%}".replace(".", ",")}])
+                            "sub": f"Gms + các chi phí khác + dự phòng {vnd(res.totals['V'])} đ "
+                                   + f"({res.totals['dp_ratio']:.2%})".replace(".", ",")}])
             else:
                 money("TMĐT (đồng) *", ("tham_so", "tmdt"))
                 kpi_cards([{"label": "→ Giá trị phần mềm Gms tương ứng", "value": res.gms, "main": True,
@@ -580,15 +581,11 @@ def step_thong_tin():
     with c3:
         with st.container(border=True):
             st.markdown("##### Quy mô dự án",
-                        help="Số lần lặp của việc: mỗi gói thầu lập/thẩm định HSMT riêng (nhóm E, F), mỗi lớp dạy riêng "
-                             "(nhóm G), mỗi hệ thống tích hợp riêng (nhóm H). Việc khác làm 1 lần, không nhân. "
-                             "Để trống = tự động theo Gms.")
+                        help="Số gói thầu: mỗi gói lập/thẩm định HSMT riêng (nhóm E, F) và tính chi phí theo NĐ 214. "
+                             "Để trống = tự động theo Gms. Số máy chủ, số nhóm học viên, số hệ thống tích hợp… "
+                             "nhập trực tiếp ở cột Hệ số của bảng Bước 3 (nhóm G, H), mặc định 1.")
             w("number_input", "Số gói thầu", ("tham_so", "so_goi"), min_value=1, step=1,
               placeholder=f"Tự động: {res.counts['goi']}", help="Mặc định theo quy mô: 2 / 3 / 5 (nhỏ / vừa / lớn).")
-            w("number_input", "Số lớp đào tạo", ("tham_so", "so_lop"), min_value=0, step=1,
-              placeholder=f"Tự động: {res.counts['lop']}", help="Mặc định theo quy mô: 1 / 3 / 6 (nhỏ / vừa / lớn).")
-            w("number_input", "Số hệ thống tích hợp", ("tham_so", "so_he_thong"), min_value=0, step=1,
-              placeholder=f"Tự động: {res.counts['he_thong']}", help="Mặc định theo quy mô: 0 / 2 / 5 (nhỏ / vừa / lớn).")
 
     if ts["che_do"] == "THUE":
         st.subheader("1d. Quản trị, vận hành (chế độ thuê)")
@@ -655,11 +652,12 @@ def step_cong_viec():
         if not g:
             st.info("Nhóm này đang tắt.")
             return
-        dung = {r.mult_kind for r in g.rows}
-        don_vi = {"goi": "gói thầu", "lop": "lớp", "he_thong": "hệ thống", "nam": "năm"}
-        he_so_txt = " · ".join(f"**{res.counts[k]} {v}**" for k, v in don_vi.items() if k in dung)
-        he_so_txt = (f"Số lần lặp áp dụng cho nhóm này: {he_so_txt} (đổi ở Bước 1, mục 1c)" if he_so_txt
-                     else "Nhóm này không có việc nào nhân theo số gói/lớp/hệ thống/năm")
+        loai = []
+        for r in g.rows:
+            if r.mult_label and r.mult_label not in loai:
+                loai.append(r.mult_label)
+        he_so_txt = (f"Cột **Hệ số** là số lần lặp của việc ({', '.join(loai)}): mặc định theo tham số, sửa trực tiếp trong bảng"
+                     if loai else "Nhóm này không có việc nào lặp theo số lượng (cột Hệ số mặc định 1, vẫn sửa được)")
         st.caption(f"Quy mô Gms {vnd(res.gms)} đ. {he_so_txt}.  \n"
                    "• **Sửa**: tên việc, Bậc, Số CG, Số ngày (ô đã sửa đánh dấu ✎; cột *Tự động* là số theo mô hình).  \n"
                    "• **Thêm việc**: bấm ➕ trên góc bảng hoặc vào dòng trống cuối bảng, gõ tên việc (mã A+1, A+2…; "
@@ -672,8 +670,7 @@ def step_cong_viec():
             "Mã": r.id, "Công việc": r.name, "Bậc": r.grade,
             "Tự động": "nhập tay" if r.mult_kind == "tuy_chon" else f"{r.auto_experts} × {r.auto_days}",
             "Số CG": r.experts, "Số ngày": r.days, "Hệ số": r.mult,
-            "Nhân theo": ("nhập tay" if r.mult_kind == "tuy_chon" else
-                          f"{r.mult:g} {don_vi[r.mult_kind]}" if r.mult_kind in don_vi else "—"),
+            "Nhân theo": "nhập tay" if r.mult_kind == "tuy_chon" else (r.mult_label or "—"),
             "Đơn giá ngày": r.price,
             "Thành tiền": r.amount, "Theo văn bản (sau thuế)": r.ref_value,
             "Dùng VB": r.use_ref, "Xoá": r.excluded, "Ghi đè": "✎" if r.overridden else ""} for r in rows])
@@ -686,11 +683,11 @@ def step_cong_viec():
             "Bậc": st.column_config.SelectboxColumn("Bậc", options=GRADES, width="small", default="M3"),
             "Số CG": st.column_config.NumberColumn("Số CG", min_value=1, step=1, width="small", default=1),
             "Số ngày": st.column_config.NumberColumn("Số ngày", min_value=1, step=1, width="small", default=1),
-            "Hệ số": st.column_config.NumberColumn(width="small", default=1.0,
-                                                   help="Số gói thầu / số lớp / số hệ thống / số năm: chỉ xem, "
-                                                        "đổi ở bước 1 (Quy mô). Việc tự thêm luôn có hệ số 1"),
-            "Nhân theo": st.column_config.TextColumn(width="small",
-                                                     help="Hệ số nhân của dòng này là số gói thầu / lớp / hệ thống / năm"),
+            "Hệ số": st.column_config.NumberColumn(width="small", default=1.0, min_value=0.0,
+                                                   help="Số lần lặp của việc (số máy chủ, số nhóm học viên, số hệ thống…), "
+                                                        "sửa trực tiếp; 0 = không tính. Ô đã sửa đánh dấu ✎"),
+            "Nhân theo": st.column_config.TextColumn(width="medium",
+                                                     help="Ý nghĩa của Hệ số ở dòng này (— = việc làm 1 lần)"),
             "Đơn giá ngày": st.column_config.NumberColumn(format="localized"),
             "Thành tiền": st.column_config.NumberColumn(format="localized"),
             "Theo văn bản (sau thuế)": st.column_config.NumberColumn(format="localized"),
@@ -701,7 +698,7 @@ def step_cong_viec():
         ed = editor(base, height=ed_height(len(base), True, ROW_STD),
                             key=f"grp{ss.ver}_{pick}_{ss[nonce_key]}_{df_hash(base)}", hide_index=True,
                             width="stretch", num_rows="dynamic", column_config=cfg,
-                            disabled=["Mã", "Tự động", "Hệ số", "Nhân theo", "Đơn giá ngày", "Thành tiền", "Theo văn bản (sau thuế)", "Ghi đè"])
+                            disabled=["Mã", "Tự động", "Nhân theo", "Đơn giá ngày", "Thành tiền", "Theo văn bản (sau thuế)", "Ghi đè"])
 
         def num(v, default):
             v = clean(v)
@@ -720,7 +717,7 @@ def step_cong_viec():
                     continue
                 rec = {"ten": clean(b["Công việc"]) or r.name, "bac": num(b["Bậc"], "M3"),
                        "so_cg": int(num(b["Số CG"], 1)), "so_ngay": int(num(b["Số ngày"], 1)),
-                       "he_so": r.mult}
+                       "he_so": float(num(b["Hệ số"], 1))}
                 if rec != {"ten": r.name, "bac": r.grade, "so_cg": r.experts, "so_ngay": r.days, "he_so": r.mult}:
                     changed = True
                 them.append(rec)
@@ -746,7 +743,10 @@ def step_cong_viec():
                         changed = True
                 if bool(b["Xoá"]) != bool(a["Xoá"]):
                     ov["bo"] = bool(b["Xoá"])
-            ov = {k: v for k, v in ov.items() if v}
+                if clean(b["Hệ số"]) is not None and clean(b["Hệ số"]) != clean(a["Hệ số"]):
+                    hs = float(b["Hệ số"])
+                    ov["he_so"] = hs if hs != r.auto_mult else None  # bằng số mặc định thì bỏ ghi đè
+            ov = {k: v for k, v in ov.items() if v or (k == "he_so" and v is not None)}
             if ov != proj["ghi_de"].get(r.id, {}):
                 if ov:
                     proj["ghi_de"][r.id] = ov
@@ -1195,7 +1195,7 @@ def step_cau_hinh():
                 w("number_input", f"Ngày công ≤ … → {i + 1} chuyên gia", ("tham_so", "bac_thang", i), min_value=1, step=1)
         with c2:
             st.markdown("##### Mốc neo S / M / L (Gms)",
-                        help="Ba mức Gms mà danh mục việc (catalog) ghi sẵn số liệu. Ví dụ G1 Xây dựng tài liệu HDSD: "
+                        help="Ba mức Gms mà danh mục việc (catalog) ghi sẵn số liệu. Ví dụ G13 Xây dựng tài liệu HDSD: "
                              "S = 1 CG × 5 ngày, M = 1 × 10, L = 2 × 10. Việc không có số ở mốc nào thì bỏ qua mốc đó. "
                              "Mốc không được bằng 0.")
             for i, lab in enumerate(("S", "M", "L")):
@@ -1203,8 +1203,7 @@ def step_cau_hinh():
         with c3:
             st.markdown("##### Ngưỡng mức nhỏ / vừa / lớn (Gms)",
                         help="Khác với mốc neo. Gms < ngưỡng M là mức nhỏ; ≥ ngưỡng M là vừa; ≥ ngưỡng L là lớn. "
-                             "Mức quyết định (1) việc nào xuất hiện (vd. H3 Tích hợp chỉ có từ mức vừa) và (2) số gói thầu, "
-                             "lớp, hệ thống mặc định ở Bước 1c.")
+                             "Mức quyết định (1) việc nào xuất hiện (vd. H8 Chuyển đổi dữ liệu chỉ có từ mức vừa) và (2) số gói thầu mặc định ở Bước 1c.")
             money("Việc quy mô M xuất hiện khi Gms ≥", ("tham_so", "nguong_M"))
             money("Việc quy mô L xuất hiện khi Gms ≥", ("tham_so", "nguong_L"))
 

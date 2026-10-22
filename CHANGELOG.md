@@ -5,6 +5,51 @@
 
 ---
 
+## 2026-10-22 – Lượt 39: Hiện số tiền dự phòng trước tỷ lệ % ở thẻ bước 1b
+**Yêu cầu:** thẻ "Tổng mức đầu tư tính ra" (chế độ nhập Gms) chỉ ghi tỷ lệ dự phòng, không có số tiền; giữ một thẻ như cũ,
+chỉ thêm số tiền dự phòng trước số %. (Đã thử tách thẻ "Dự phòng" riêng, người dùng không muốn, đã hoàn lại.)
+
+**Đã sửa**
+- `app.py` (bước 1b, chế độ nhập Gms): dòng phụ thành "Gms + các chi phí khác + dự phòng 410.227.997 đ (10,00%)".
+  Chế độ nhập TMĐT vốn đã có dạng này, giữ nguyên. Chỉ đổi hiển thị.
+
+**Kiểm tra:** `python -m pytest -q` → 142 passed; AppTest bước 1 hai chế độ (Gms 3 tỷ, Kdp 10%) không lỗi, thẻ hiện số tiền trước %.
+
+**Việc còn treo:** chưa commit (gộp lượt 38, 39), chờ người dùng duyệt. Chưa xem thẻ trên trình duyệt.
+
+---
+
+## 2026-10-22 – Lượt 38: Đổi danh sách việc nhóm G, H theo template 671 (QĐ 2331); Hệ số nhập tay ở bước 3
+**Yêu cầu:** xem sheet Tonghop, CP Dao tao trong "Teamplate du toan 671.xlsx"; cập nhật danh sách việc đào tạo, chuyển giao;
+phân loại việc thuộc G hay H (việc cài đặt/cấu hình/tích hợp sang H, thay H1–H3); số máy chủ, số nhóm… để người dùng tự nhập
+ở bước 3 (mặc định 1); quy đổi bậc KS 1/9–2/9 → M4, KS 3/9–4/9 → M3.
+
+**Đã sửa**
+- `dutoan/catalog.py`: nhóm G còn 15 việc (G1–G12 theo mục 11–14 của template: kiểm tra yêu cầu, lập kế hoạch, chuẩn bị mã nguồn,
+  hướng dẫn khai thác/quản trị/cài đặt, chuyển giao mã nguồn, bài kiểm tra, báo cáo; G13–G15 giữ tài liệu HDSD, video, hỗ trợ);
+  nhóm H còn 10 việc (H1–H7 theo mục 11–12: kiểm tra hạ tầng, chuẩn bị, cài đặt máy chủ/máy trạm, cấu hình, tích hợp, chạy thử;
+  H8–H10 giữ chuyển đổi dữ liệu, UAT, hỗ trợ). Số CG × ngày ở mốc S/M/L quy đổi từ công kỹ sư của sheet ĐM-CG (làm tròn gần nhất).
+  Thêm loại hệ số `may_chu`, `may_tram`, `nhom_kt`, `nhom_qt`, `nhom_mt`, `he_thong` và `MULT_DEFAULT` (mặc định 1; máy trạm = 0).
+- `dutoan/calc.py`: `counts()` chỉ còn số gói (theo quy mô/nhập tay) + số năm + số lượng mặc định; bỏ số lớp, số hệ thống theo quy mô.
+  Hệ số từng dòng ghi đè được bằng `ghi_de[id]["he_so"]` (kể cả 0); `Row.auto_mult` giữ số mặc định.
+- `dutoan/defaults.py`: bỏ `so_lop`, `so_he_thong` (dự án cũ còn khoá thừa, không ảnh hưởng).
+- `app.py`: bước 1c bỏ ô Số lớp, Số hệ thống (giữ Số gói thầu); bước 3 cột **Hệ số** sửa được ở mọi dòng (ô đã sửa đánh dấu ✎,
+  trùng số mặc định thì tự bỏ ghi đè), cột "Nhân theo" ghi ý nghĩa hệ số; caption nhóm đổi theo.
+- `dutoan/excel_export.py`: bỏ SO_LOP, SO_HT ở 01_THAM_SO; cột F bảng nhóm ghi `=SO_GOI`/`=SO_NAM` khi chưa sửa, ghi số (ô vàng) khi
+  hệ số là số nhập tay; ghi chú dòng nêu ý nghĩa hệ số. Công thức H = D×E×F×G giữ nguyên.
+- `tests/`: sửa 2 test theo `counts()` mới; thêm 5 test hệ số (mặc định, nhân đúng tiền, hệ số 0, hệ số E2, Excel khớp).
+
+**Kiểm tra**
+- `python -m pytest -q` → 142 passed. AppTest chạy bước 3 nhóm A, E, G, H không lỗi.
+- Giao diện: nhóm H hiện đúng 10 việc mới và caption mới (phải khởi động lại server để nạp catalog). Chưa thao tác sửa ô Hệ số trên giao diện
+  (cửa sổ trình duyệt không vẽ lại được). Excel mới chỉ đối chiếu giá trị đã ghi, chưa mở trong Excel để tính lại công thức.
+
+**Việc còn treo:** chưa làm công tắc "Định mức QĐ 2331" (giai đoạn 2: ô số chức năng, đơn giá máy/vật liệu, sheet DM_CG_2331);
+tổng nhóm G, H đổi so với trước (G Gms 3 tỷ: 103,7 tr; H: 283,9 tr, hệ số H3 = 21 trong thử nghiệm); dự án cũ có `ghi_de` theo mã G1–G5, H1–H6
+sẽ rơi vào việc mới cùng mã (ví dụ G1 của dự án An Khanh đang bị sửa 888 ngày); chưa commit, chờ duyệt.
+
+---
+
 ## 2026-10-22 – Lượt 37: Ghi chú giải thích mục 8c (mốc neo S/M/L, ngưỡng nhỏ/vừa/lớn)
 **Yêu cầu:** người dùng không hiểu "Mốc neo S/M/L (Gms)"; cần ghi chú ngay tại ô để lần sau xem là hiểu.
 

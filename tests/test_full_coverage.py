@@ -42,9 +42,9 @@ def test_tier_va_counts_theo_quy_mo(proj):
     ts = proj["tham_so"]
     assert tier(0.5e9, ts) == 0 and tier(2e9, ts) == 1 and tier(10e9, ts) == 2
     c0 = counts(0.5e9, ts)
-    assert (c0["goi"], c0["lop"], c0["he_thong"]) == (2, 1, 0)
+    assert c0["goi"] == 2
     c2 = counts(10e9, ts)
-    assert (c2["goi"], c2["lop"], c2["he_thong"]) == (5, 6, 5)
+    assert c2["goi"] == 5
 
 
 def test_counts_ghi_de_bang_tay(proj):

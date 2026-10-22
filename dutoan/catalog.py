@@ -11,7 +11,7 @@ class Task:
     name: str
     grade: str
     anchors: tuple  # 3 phần tử: (số CG, số ngày) hoặc None tại mốc S / M / L
-    mult: str = ""  # "" | "goi" | "lop" | "he_thong" | "nam"
+    mult: str = ""  # "" | "goi" | "nam" | "may_chu" | "may_tram" | "nhom_kt" | "nhom_qt" | "nhom_mt" | "he_thong"
     fixed: tuple | None = None  # (CG, ngày) cố định, không co giãn
     ref: str = ""  # khóa công thức "theo văn bản"
     switch: str = ""  # tên tham số bật/tắt việc này
@@ -92,19 +92,33 @@ GROUPS = [
         T("F3", "Thẩm định kết quả LCNT (mỗi gói thầu)", "M3", "1x1", "1x2", "1x2", mult="goi", ref="nd214_td_kq"),
     ]),
     Group("G", "DAO_TAO", "Chi phí đào tạo, chuyển giao", "TB", [
-        T("G1", "Xây dựng chương trình, tài liệu HDSD", "M4", "1x5", "1x10", "2x10"),
-        T("G2", "Đào tạo người dùng cuối (mỗi lớp)", "M4", "1x2", "1x2", "1x2", mult="lop", fixed=(1, 2)),
-        T("G3", "Đào tạo quản trị, vận hành", "M3", "1x2", "1x3", "2x3"),
-        T("G4", "Video, tài liệu HDSD điện tử", "M4", None, "1x5", "2x8"),
-        T("G5", "Hỗ trợ sau đào tạo", "M4", None, None, "2x10"),
+        T("G1", "Kiểm tra yêu cầu chuyển giao phần mềm", "M3", "1x1", "1x2", "1x3"),
+        T("G2", "Lập kế hoạch chuyển giao", "M3", "1x1", "1x2", "1x2"),
+        T("G3", "Chuẩn bị bộ mã nguồn phần mềm cần chuyển giao", "M4", "1x1", "1x2", "1x2"),
+        T("G4", "Chuẩn bị chuyển giao quản trị – khai thác phần mềm", "M4", "1x1", "1x2", "1x2"),
+        T("G5", "Hướng dẫn khai thác sử dụng (mỗi nhóm ≤ 25 học viên)", "M3", "2x1", "2x2", "2x4", mult="nhom_kt"),
+        T("G6", "Hướng dẫn quản trị phần mềm (mỗi nhóm ≤ 25 học viên)", "M3", "2x2", "2x4", "2x5", mult="nhom_qt"),
+        T("G7", "Hướng dẫn cài đặt, cấu hình trên máy chủ (mỗi nhóm)", "M3", "1x2", "1x3", "1x4"),
+        T("G8", "Hướng dẫn cài đặt, cấu hình trên máy trạm (mỗi nhóm)", "M3", "1x1", "1x1", "1x1", mult="nhom_mt"),
+        T("G9", "Chuyển giao mã nguồn chương trình", "M3", "1x2", "1x3", "1x4"),
+        T("G10", "Xây dựng bài kiểm tra", "M3", "1x1", "1x1", "1x2"),
+        T("G11", "Kiểm tra khả năng vận hành quản trị – khai thác", "M4", "1x1", "1x1", "1x1"),
+        T("G12", "Lập báo cáo đánh giá kết quả chuyển giao", "M3", "1x2", "1x4", "1x5"),
+        T("G13", "Xây dựng chương trình, tài liệu HDSD", "M4", "1x5", "1x10", "2x10"),
+        T("G14", "Video, tài liệu HDSD điện tử", "M4", None, "1x5", "2x8"),
+        T("G15", "Hỗ trợ sau đào tạo", "M4", None, None, "2x10"),
     ]),
     Group("H", "TRIEN_KHAI", "Chi phí triển khai trước nghiệm thu", "TB", [
-        T("H1", "Cài đặt, triển khai lên môi trường vận hành", "M3", "1x2", "1x4", "2x6"),
-        T("H2", "Cấu hình, tham số hóa hệ thống", "M3", "1x3", "1x6", "2x10"),
-        T("H3", "Tích hợp, kết nối (mỗi hệ thống)", "M2", None, "1x8", "2x10", mult="he_thong"),
-        T("H4", "Chuyển đổi dữ liệu từ hệ thống cũ", "M3", None, "2x10", "3x20"),
-        T("H5", "Vận hành thử cùng người dùng (UAT)", "M4", "1x5", "2x8", "3x12"),
-        T("H6", "Hỗ trợ, vận hành trước nghiệm thu", "M4", "1x10", "2x15", "3x30"),
+        T("H1", "Kiểm tra hạ tầng kỹ thuật để chuyển giao phần mềm", "M3", "1x1", "1x1", "1x1"),
+        T("H2", "Chuẩn bị cài đặt phần mềm", "M4", "1x1", "1x2", "1x2"),
+        T("H3", "Cài đặt phần mềm trên máy chủ (mỗi máy chủ)", "M3", "1x1", "1x2", "1x2", mult="may_chu"),
+        T("H4", "Cài đặt phần mềm trên máy trạm (mỗi 10 máy trạm)", "M4", "1x1", "1x1", "1x1", mult="may_tram"),
+        T("H5", "Cấu hình phần mềm (mỗi máy chủ)", "M4", "1x1", "1x2", "1x2", mult="may_chu"),
+        T("H6", "Cấu hình tích hợp với phần mềm khác (mỗi hệ thống)", "M3", "1x1", "1x2", "1x2", mult="he_thong"),
+        T("H7", "Chạy thử các chức năng", "M4", "1x1", "1x2", "1x2"),
+        T("H8", "Chuyển đổi dữ liệu từ hệ thống cũ", "M3", None, "2x10", "3x20"),
+        T("H9", "Vận hành thử cùng người dùng (UAT)", "M4", "1x5", "2x8", "3x12"),
+        T("H10", "Hỗ trợ, vận hành trước nghiệm thu", "M4", "1x10", "2x15", "3x30"),
     ]),
     Group("I", "KIEM_THU", "Chi phí kiểm thử độc lập (TT 41/2026)", "GK", [
         T("I1", "Lập kế hoạch, kịch bản kiểm thử", "M3", "1x2", "1x4", "2x5"),
@@ -128,7 +142,11 @@ GROUPS = [
 GROUP_BY_CODE = {g.code: g for g in GROUPS}
 TASK_BY_ID = {t.id: t for g in GROUPS for t in g.tasks}
 
-MULT_LABEL = {"": "", "goi": "số gói thầu", "lop": "số lớp", "he_thong": "số hệ thống", "nam": "số năm"}
+MULT_LABEL = {"": "", "goi": "số gói thầu", "nam": "số năm", "may_chu": "số máy chủ", "may_tram": "số lần 10 máy trạm",
+              "nhom_kt": "số nhóm khai thác", "nhom_qt": "số nhóm quản trị", "nhom_mt": "số nhóm (máy trạm)",
+              "he_thong": "số hệ thống tích hợp"}
+# Số lượng mặc định của các loại hệ số (nhập tay ở cột Hệ số bước 3); "goi" và "nam" lấy từ tham số bước 1
+MULT_DEFAULT = {"may_chu": 1, "may_tram": 0, "nhom_kt": 1, "nhom_qt": 1, "nhom_mt": 0, "he_thong": 1}
 
 # Nhân công PM nội bộ (nhóm K) – tỷ lệ cố định theo template
 PM_ROLES = [
