@@ -575,6 +575,8 @@ def step_thong_tin():
         with c3:
             st.markdown(f"**Quy mô** – để trống = tự động theo Gms (hiện: {res.counts['goi']} gói, "
                         f"{res.counts['lop']} lớp, {res.counts['he_thong']} hệ thống)")
+            st.caption("Là số lần lặp của việc: mỗi gói thầu lập/thẩm định HSMT riêng (nhóm E, F), mỗi lớp dạy riêng "
+                       "(nhóm G), mỗi hệ thống tích hợp riêng (nhóm H). Việc khác làm 1 lần, không nhân.")
             w("number_input", "Số gói thầu (mặc định 2/3/5)", ("tham_so", "so_goi"), min_value=1, step=1, placeholder="Tự động")
             w("number_input", "Số lớp đào tạo (1/3/6)", ("tham_so", "so_lop"), min_value=0, step=1, placeholder="Tự động")
             w("number_input", "Số hệ thống tích hợp (0/2/5)", ("tham_so", "so_he_thong"), min_value=0, step=1, placeholder="Tự động")
@@ -644,8 +646,12 @@ def step_cong_viec():
         if not g:
             st.info("Nhóm này đang tắt.")
             return
-        st.caption(f"Quy mô Gms {vnd(res.gms)} đ · {res.counts['goi']} gói thầu · {res.counts['lop']} lớp · "
-                   f"{res.counts['he_thong']} hệ thống · {res.counts['nam']} năm.  \n"
+        dung = {r.mult_kind for r in g.rows}
+        don_vi = {"goi": "gói thầu", "lop": "lớp", "he_thong": "hệ thống", "nam": "năm"}
+        he_so_txt = " · ".join(f"**{res.counts[k]} {v}**" for k, v in don_vi.items() if k in dung)
+        he_so_txt = (f"Số lần lặp áp dụng cho nhóm này: {he_so_txt} (đổi ở Bước 1, mục 1c)" if he_so_txt
+                     else "Nhóm này không có việc nào nhân theo số gói/lớp/hệ thống/năm")
+        st.caption(f"Quy mô Gms {vnd(res.gms)} đ. {he_so_txt}.  \n"
                    "• **Sửa**: tên việc, Bậc, Số CG, Số ngày (ô đã sửa đánh dấu ✎; cột *Tự động* là số theo mô hình).  \n"
                    "• **Thêm việc**: bấm ➕ trên góc bảng hoặc vào dòng trống cuối bảng, gõ tên việc (mã A+1, A+2…; "
                    "số CG × ngày nhập tay, không co giãn).  \n"
@@ -656,9 +662,15 @@ def step_cong_viec():
         base = pd.DataFrame([{
             "Mã": r.id, "Công việc": r.name, "Bậc": r.grade,
             "Tự động": "nhập tay" if r.mult_kind == "tuy_chon" else f"{r.auto_experts} × {r.auto_days}",
-            "Số CG": r.experts, "Số ngày": r.days, "Hệ số": r.mult, "Đơn giá ngày": r.price,
+            "Số CG": r.experts, "Số ngày": r.days, "Hệ số": r.mult,
+            "Nhân theo": ("nhập tay" if r.mult_kind == "tuy_chon" else
+                          f"{r.mult:g} {don_vi[r.mult_kind]}" if r.mult_kind in don_vi else "—"),
+            "Đơn giá ngày": r.price,
             "Thành tiền": r.amount, "Theo văn bản (sau thuế)": r.ref_value,
             "Dùng VB": r.use_ref, "Xoá": r.excluded, "Ghi đè": "✎" if r.overridden else ""} for r in rows])
+        co_vb = any(r.ref for r in rows)  # nhóm không có số theo văn bản thì bỏ cột Dùng VB (tick vào cũng không có tác dụng)
+        if not co_vb:
+            base = base.drop(columns=["Dùng VB"])
         cfg = {
             "Mã": st.column_config.TextColumn(width="small"),
             "Công việc": st.column_config.TextColumn(width="large"),
@@ -666,8 +678,10 @@ def step_cong_viec():
             "Số CG": st.column_config.NumberColumn("Số CG", min_value=1, step=1, width="small", default=1),
             "Số ngày": st.column_config.NumberColumn("Số ngày", min_value=1, step=1, width="small", default=1),
             "Hệ số": st.column_config.NumberColumn(width="small", default=1.0,
-                                                   help="Số gói thầu / số lớp / số hệ thống / số năm. Việc mặc định: "
-                                                        "đổi ở bước 1 (Quy mô). Việc tự thêm: nhập trực tiếp"),
+                                                   help="Số gói thầu / số lớp / số hệ thống / số năm: chỉ xem, "
+                                                        "đổi ở bước 1 (Quy mô). Việc tự thêm luôn có hệ số 1"),
+            "Nhân theo": st.column_config.TextColumn(width="small",
+                                                     help="Hệ số nhân của dòng này là số gói thầu / lớp / hệ thống / năm"),
             "Đơn giá ngày": st.column_config.NumberColumn(format="localized"),
             "Thành tiền": st.column_config.NumberColumn(format="localized"),
             "Theo văn bản (sau thuế)": st.column_config.NumberColumn(format="localized"),
@@ -678,7 +692,7 @@ def step_cong_viec():
         ed = editor(base, height=ed_height(len(base), True, ROW_STD),
                             key=f"grp{ss.ver}_{pick}_{ss[nonce_key]}_{df_hash(base)}", hide_index=True,
                             width="stretch", num_rows="dynamic", column_config=cfg,
-                            disabled=["Mã", "Tự động", "Đơn giá ngày", "Thành tiền", "Theo văn bản (sau thuế)", "Ghi đè"])
+                            disabled=["Mã", "Tự động", "Hệ số", "Nhân theo", "Đơn giá ngày", "Thành tiền", "Theo văn bản (sau thuế)", "Ghi đè"])
 
         def num(v, default):
             v = clean(v)
@@ -697,7 +711,7 @@ def step_cong_viec():
                     continue
                 rec = {"ten": clean(b["Công việc"]) or r.name, "bac": num(b["Bậc"], "M3"),
                        "so_cg": int(num(b["Số CG"], 1)), "so_ngay": int(num(b["Số ngày"], 1)),
-                       "he_so": float(num(b["Hệ số"], 1))}
+                       "he_so": r.mult}
                 if rec != {"ten": r.name, "bac": r.grade, "so_cg": r.experts, "so_ngay": r.days, "he_so": r.mult}:
                     changed = True
                 them.append(rec)
@@ -716,12 +730,13 @@ def step_cong_viec():
                     ov.pop("so_ngay", None)
                 if b["Số ngày"] != a["Số ngày"] and clean(b["Số ngày"]):
                     ov["so_ngay"] = int(b["Số ngày"])
-                if bool(b["Dùng VB"]) != bool(a["Dùng VB"]):
+                if co_vb and bool(b["Dùng VB"]) != bool(a["Dùng VB"]):
                     ov["dung_vb"] = bool(b["Dùng VB"]) and r.ref != ""
+                    if r.ref == "":
+                        st.toast(f"Dòng {r.id} không có số theo văn bản nên không thể tick 'Dùng VB'.", icon="⚠️")
+                        changed = True
                 if bool(b["Xoá"]) != bool(a["Xoá"]):
                     ov["bo"] = bool(b["Xoá"])
-                if clean(b["Hệ số"]) != clean(a["Hệ số"]):
-                    changed = True  # hệ số việc mặc định không sửa ở đây → làm mới bảng
             ov = {k: v for k, v in ov.items() if v}
             if ov != proj["ghi_de"].get(r.id, {}):
                 if ov:
@@ -736,7 +751,7 @@ def step_cong_viec():
             name = clean(b["Công việc"])
             if name:  # dòng mới chỉ được ghi nhận khi đã có tên việc
                 them.append({"ten": name, "bac": num(b["Bậc"], "M3"), "so_cg": int(num(b["Số CG"], 1)),
-                             "so_ngay": int(num(b["Số ngày"], 1)), "he_so": float(num(b["Hệ số"], 1))})
+                             "so_ngay": int(num(b["Số ngày"], 1)), "he_so": 1.0})
                 changed = True
         if changed:
             if them:

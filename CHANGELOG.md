@@ -5,6 +5,38 @@
 
 ---
 
+## 2026-10-22 – Lượt 35: Làm rõ "số gói thầu / lớp / hệ thống / năm" ở bước 1c và bước 3
+**Yêu cầu:** caption bước 3a hiện "3 năm" dù chế độ XD (giá trị mặc định ẩn của `so_nam_thue`); cột "Hệ số" chỉ có
+con số, 3 thông số quy mô khó hiểu. Làm rõ cách hiển thị (không đổi công thức).
+
+**Đã sửa**
+- `app.py` (bước 3, dòng caption): thay dòng "N gói thầu · N lớp · N hệ thống · N năm" bằng "Số lần lặp áp dụng cho
+  nhóm này: …" chỉ liệt kê số mà nhóm dùng (E,F: gói; G: lớp; H: hệ thống; J: năm); nhóm không dùng thì ghi
+  "không có việc nào nhân…". Số năm chỉ xuất hiện ở nhóm J nên không còn "3 năm" ở chế độ XD.
+- `app.py` (bảng bước 3): thêm cột chỉ xem **"Nhân theo"** cạnh "Hệ số": "2 lớp", "2 gói thầu", "3 năm", "—" (không nhân),
+  "nhập tay" (việc tự thêm). Cột "Hệ số" vẫn giữ nguyên để sửa việc tự thêm.
+- `app.py` (bước 1c, ô Quy mô): thêm 1 đoạn giải thích số lần lặp (gói → nhóm E,F; lớp → G; hệ thống → H).
+- Không đổi công thức nên không sửa `calc.py`/`excel_export.py`; Excel xuất ra giữ nguyên.
+
+**Kiểm tra**
+- `python -m pytest -q` → 137 passed.
+- Chạy giao diện (dự án An Khanh, chế độ XD): nhóm A ghi "không có việc nào nhân…"; nhóm G ghi "2 lớp (đổi ở Bước 1,
+  mục 1c)", cột "Nhân theo" hiện "—", "2 lớp", "—"; không lỗi server. (Lần đầu có NameError `nam_txt`, đã sửa.)
+
+**Bổ sung cùng lượt – bảng bước 3 chỉ cho sửa ô sửa được** (người dùng: ô nào click cũng sửa được nhưng Enter thì trả về giá trị cũ)
+- `app.py`: cột **Hệ số** khoá hẳn (trước đây việc mặc định sửa được nhưng bị bỏ qua và làm mới bảng; việc tự thêm
+  luôn có hệ số 1). Hệ số đổi ở Bước 1, mục 1c.
+- `app.py`: cột **Dùng VB** chỉ hiện khi nhóm có dòng có số theo văn bản (nhóm E, F); dòng không có văn bản mà tick
+  thì hiện cảnh báo "không có số theo văn bản" thay vì im lặng trả về.
+- Ô sửa được còn lại: Công việc, Bậc, Số CG, Số ngày, Dùng VB (dòng có văn bản), Xoá. Khoá: Mã, Tự động, Hệ số,
+  Nhân theo, Đơn giá ngày, Thành tiền, Theo văn bản, Ghi đè.
+- Kiểm tra: pytest 137 passed; giao diện nhóm E: bấm đôi ô Hệ số không mở ô nhập.
+
+**Việc còn treo:** chưa commit (gộp lượt 33, 34, 35), chờ người dùng duyệt. Chưa thử tick "Dùng VB" ở dòng không có văn bản
+(E4/F1) để xem cảnh báo.
+
+---
+
 ## 2026-10-21 – Lượt 34: Cảnh báo đỏ khi TMĐT nhập nhỏ hơn chi phí tối thiểu
 **Yêu cầu:** nhập TMĐT quá nhỏ thì dự phòng âm; hiện dòng đỏ báo rõ thay vì để số âm khó hiểu (giữ nguyên số âm, không ép về 0).
 
