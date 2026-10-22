@@ -5,6 +5,26 @@
 
 ---
 
+## 2026-10-22 – Lượt 37: Ghi chú giải thích mục 8c (mốc neo S/M/L, ngưỡng nhỏ/vừa/lớn)
+**Yêu cầu:** người dùng không hiểu "Mốc neo S/M/L (Gms)"; cần ghi chú ngay tại ô để lần sau xem là hiểu.
+
+**Đã sửa**
+- `app.py` (bước 8c): thêm đoạn mô tả đầu mục (số CG × ngày suy ra từ Gms, 3 mốc S/M/L, nội suy chứ không lấy mốc gần nhất,
+  ngoài khoảng thì co giãn theo EXP); chia 3 thẻ có tiêu đề: *Hệ số co giãn & bậc thang* (có dấu ? cho EXP),
+  *Mốc neo S/M/L* (ví dụ G1 = 1×5, 1×10, 2×10; mốc ≠ 0), *Ngưỡng mức nhỏ/vừa/lớn* (khác mốc neo; quyết định việc xuất hiện
+  và số gói/lớp/hệ thống mặc định).
+- Không đổi công thức/khoá lưu.
+
+**Bổ sung cùng lượt (theo yêu cầu "làm icon ? rê chuột vào mới hiện"):** các đoạn giải thích dài ở 8c và 1c chuyển từ
+chữ hiện sẵn sang tooltip dấu **?** (tham số `help=`): tiêu đề mục 8c, 3 tiêu đề thẻ 8c, ô "Chi phí thẩm định giá" và
+tiêu đề thẻ "Quy mô dự án" ở 1c. Chỉ đổi cách hiển thị.
+
+**Kiểm tra:** `python -m pytest -q` → 137 passed; mở giao diện bước 8c, rê chuột vào ? ở "Mốc neo S / M / L" hiện đúng nội dung.
+
+**Việc còn treo:** chưa commit, chờ người dùng duyệt. Cột hẹp nên dấu ? đôi khi xuống dòng dưới tiêu đề thẻ.
+
+---
+
 ## 2026-10-22 – Lượt 36: Bố cục lại mục 1c cho thoáng, dễ hiểu
 **Yêu cầu:** mục 1c (Hệ số & công tắc) các ô dính nhau, khó phân biệt; ô "Chi phí thẩm định giá" nằm dưới nhãn "Thuế" gây hiểu nhầm.
 

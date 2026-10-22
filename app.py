@@ -564,8 +564,8 @@ def step_thong_tin():
             pct("Thuế GTGT (%)", ("tham_so", "vat"))
             st.caption("Lương cơ sở, hệ số lương, lương chuyên gia: bước 8 → 8a.")
             st.divider()
-            money("Chi phí thẩm định giá (đồng)", ("tham_so", "tham_dinh_gia"))
-            st.caption("Khoản chi phí khác, nhập tay theo báo giá (vd. thẩm định giá thiết bị). "
+            money("Chi phí thẩm định giá (đồng)", ("tham_so", "tham_dinh_gia"),
+                  help="Khoản chi phí khác, nhập tay theo báo giá (vd. thẩm định giá thiết bị). "
                        "Không có thì để 0; có thì cộng vào TMĐT và cơ sở tính kiểm toán, thẩm tra.")
     with c2:
         with st.container(border=True):
@@ -579,10 +579,10 @@ def step_thong_tin():
             w("checkbox", "Có thẩm tra (lệ phí thẩm định × 50%)", ("tham_so", "ptd_co_tham_tra"))
     with c3:
         with st.container(border=True):
-            st.markdown("##### Quy mô dự án")
-            st.caption("Số lần lặp của việc: mỗi gói thầu lập/thẩm định HSMT riêng (nhóm E, F), mỗi lớp dạy riêng "
-                       "(nhóm G), mỗi hệ thống tích hợp riêng (nhóm H). Việc khác làm 1 lần, không nhân. "
-                       "**Để trống = tự động theo Gms.**")
+            st.markdown("##### Quy mô dự án",
+                        help="Số lần lặp của việc: mỗi gói thầu lập/thẩm định HSMT riêng (nhóm E, F), mỗi lớp dạy riêng "
+                             "(nhóm G), mỗi hệ thống tích hợp riêng (nhóm H). Việc khác làm 1 lần, không nhân. "
+                             "Để trống = tự động theo Gms.")
             w("number_input", "Số gói thầu", ("tham_so", "so_goi"), min_value=1, step=1,
               placeholder=f"Tự động: {res.counts['goi']}", help="Mặc định theo quy mô: 2 / 3 / 5 (nhỏ / vừa / lớn).")
             w("number_input", "Số lớp đào tạo", ("tham_so", "so_lop"), min_value=0, step=1,
@@ -1178,17 +1178,33 @@ def step_cau_hinh():
         with c3:
             pct("Thu nhập chịu thuế tính trước – tư vấn (%)", ("tham_so", "tn_tv"))
 
-    st.subheader("8c. Mô hình co giãn theo quy mô")
+    st.subheader("8c. Mô hình co giãn theo quy mô",
+                 help="Số chuyên gia × số ngày của mỗi việc ở Bước 3 được suy ra từ Gms (giá trị phần mềm, tính từ TMĐT). "
+                      "Mỗi việc trong danh mục có sẵn số liệu ở 3 mốc S / M / L; app nội suy giữa hai mốc kẹp Gms "
+                      "(không lấy nguyên số của mốc gần nhất). Gms nhỏ hơn mốc S hoặc lớn hơn mốc L thì co giãn tiếp "
+                      "theo hệ số EXP.")
     with st.container(border=True):
-        c1, c2, c3 = st.columns(3)
+        c1, c2, c3 = st.columns(3, gap="medium")
         with c1:
-            w("number_input", "Hệ số co giãn EXP (0,5 – 0,8)", ("tham_so", "exp"), min_value=0.1, max_value=1.5, step=0.05)
+            st.markdown("##### Hệ số co giãn & bậc thang",
+                        help="Tổng ngày công của việc được tách thành số chuyên gia × số ngày theo bậc thang: "
+                             "tổng ngày ≤ mốc 1 thì 1 chuyên gia, ≤ mốc 2 thì 2 chuyên gia, …")
+            w("number_input", "Hệ số co giãn EXP (0,5 – 0,8)", ("tham_so", "exp"), min_value=0.1, max_value=1.5, step=0.05,
+              help="Gms nằm ngoài khoảng S–L: số ngày co giãn theo (Gms / mốc gần nhất)^EXP. Nhỏ hơn 1 nên tăng chậm hơn Gms.")
             for i in range(4):
                 w("number_input", f"Ngày công ≤ … → {i + 1} chuyên gia", ("tham_so", "bac_thang", i), min_value=1, step=1)
         with c2:
+            st.markdown("##### Mốc neo S / M / L (Gms)",
+                        help="Ba mức Gms mà danh mục việc (catalog) ghi sẵn số liệu. Ví dụ G1 Xây dựng tài liệu HDSD: "
+                             "S = 1 CG × 5 ngày, M = 1 × 10, L = 2 × 10. Việc không có số ở mốc nào thì bỏ qua mốc đó. "
+                             "Mốc không được bằng 0.")
             for i, lab in enumerate(("S", "M", "L")):
                 money(f"Mốc neo {lab} (Gms)", ("tham_so", "moc_neo", i))
         with c3:
+            st.markdown("##### Ngưỡng mức nhỏ / vừa / lớn (Gms)",
+                        help="Khác với mốc neo. Gms < ngưỡng M là mức nhỏ; ≥ ngưỡng M là vừa; ≥ ngưỡng L là lớn. "
+                             "Mức quyết định (1) việc nào xuất hiện (vd. H3 Tích hợp chỉ có từ mức vừa) và (2) số gói thầu, "
+                             "lớp, hệ thống mặc định ở Bước 1c.")
             money("Việc quy mô M xuất hiện khi Gms ≥", ("tham_so", "nguong_M"))
             money("Việc quy mô L xuất hiện khi Gms ≥", ("tham_so", "nguong_L"))
 
